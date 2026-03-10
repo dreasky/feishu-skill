@@ -1,0 +1,11 @@
+# 环境变量和凭证
+.env
+.env.local
+*.pem
+*.key
+
+.venv
+.claude
+
+__pycache__
+.data

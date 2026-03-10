@@ -1,0 +1,4 @@
+# 飞书文档上传技能依赖
+requests>=2.31.0
+lark-oapi>=1.5.0
+python-dotenv>=1.2.2
