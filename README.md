@@ -2,18 +2,17 @@
 
 ## 概述
 
-本项目旨在为飞书平台创建和管理技能，旨在提高用户的生产力并简化工作流程。
+与飞书平台交互的skill，替代mcp方案，可灵活自定义
 
 ## 功能
 
-* 用户友好的界面
-* 与现有工具集成
-* 实时协作
+* 为claude code等ai工具接入飞书交互
+* 使用skill的方式调用飞书[服务端API](https://open.feishu.cn/document/home/index)
 
 ## 安装使用
 
 ```bash
-npx skills add https://github.com/dreasky/feishu-skill --skill lark-mcp
+npx skills add https://github.com/dreasky/feishu-skill --skill feishu
 ```
 
 ## 贡献
