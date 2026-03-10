@@ -1,26 +1,25 @@
-# Feishu Skill Project
+# 飞书技能项目
 
-## Overview
-This project is designed to create and manage skills for the Feishu platform. It aims to enhance productivity and streamline workflows for users.
+## 概述
 
-## Features
-- User-friendly interface
-- Integration with existing tools
-- Real-time collaboration
+本项目旨在为飞书平台创建和管理技能，旨在提高用户的生产力并简化工作流程。
 
-## Installation
-1. Clone the repository: `git clone https://github.com/dreasky/feishu-skill.git`
-2. Navigate to the project directory.
-3. Install dependencies: `npm install`
+## 功能
 
-## Usage
-Run the application using the following command:
+* 用户友好的界面
+* 与现有工具集成
+* 实时协作
+
+## 安装使用
+
 ```bash
-npm start
+npx skills add https://github.com/dreasky/feishu-skill --skill lark-mcp
 ```
 
-## Contribution
-Feel free to contribute to this project by submitting issues and pull requests.
+## 贡献
 
-## License
-This project is licensed under the MIT License.
+欢迎通过提交问题和拉取请求来为这个项目做出贡献。
+
+## 许可证
+
+本项目根据 MIT 许可证授权。
