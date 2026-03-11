@@ -1,16 +1,25 @@
-# 给 AI Agent 的飞书 Wrapper 开发规范
+# 给 AI Agent 的飞书 API Wrapper 开发规范
 
 ## 文件结构
 
 ```text
 feishu/scripts/
-├── lark_wrapper.py          # BaseWrapper 基类（不添加业务方法）
-├── lark_entity.py           # 所有实体类（Result / Item / Error）
-├── lark_auth.py             # 鉴权（不修改）
-├── message_wrapper.py       # 消息 API
-├── group_wrapper.py         # 群组 API
-├── cloud_document_wrapper.py # 云文档 API
-└── {module}_wrapper.py      # 新增模块按此命名
+├── run.py                          # 入口：自动创建 venv、安装依赖并执行脚本
+├── lark_cli.py                     # CLI 命令定义
+├── lark_fast_api.py                # FastAPI 服务入口
+├── base/
+│   ├── __init__.py
+│   └── lark_auth.py                # 鉴权（不修改）
+└── wrapper/
+    ├── __init__.py                 # 导出所有 Wrapper 类
+    ├── base_wrapper.py             # BaseWrapper 基类（不添加业务方法）
+    ├── wrapper_entity.py           # 所有 Result / Item 实体类
+    ├── wrapper_error.py            # WrapperError 异常类
+    ├── message_manage_wrapper.py   # 消息 API
+    ├── group_manage_wrapper.py     # 群组 API
+    ├── cloud_space_wrapper.py      # 云文档空间 API
+    ├── cloud_auth_wrapper.py       # 云文档权限 API
+    └── {module}_wrapper.py         # 新增模块按此命名
 ```
 
 ## 新增 Wrapper 文件
@@ -18,15 +27,16 @@ feishu/scripts/
 每个 `*_wrapper.py` 继承 `BaseWrapper`，只包含对应飞书服务端 API 模块的方法。
 
 ```python
-# {module}_wrapper.py
+# wrapper/{module}_wrapper.py
 import json
 from lark_oapi.api.{service}.{version} import (
     XxxRequest,
     XxxResponse,
     # 只导入本文件用到的类，不用 *
 )
-from lark_wrapper import BaseWrapper
-from lark_entity import LarkError, XxxResult
+from .base_wrapper import BaseWrapper
+from .wrapper_entity import XxxResult
+from .wrapper_error import WrapperError
 
 
 class XxxWrapper(BaseWrapper):
@@ -45,12 +55,17 @@ class XxxWrapper(BaseWrapper):
 
         # 处理失败返回
         if not response.success():
-            raise LarkError(
+            resp_data = (
+                json.loads(response.raw.content)
+                if response.raw and response.raw.content
+                else {}
+            )
+            raise WrapperError(
                 method="do_something",
                 code=response.code,
                 msg=response.msg,
                 log_id=response.get_log_id(),
-                resp=json.loads(response.raw.content),
+                resp=resp_data,
             )
 
         # 处理业务结果
@@ -59,12 +74,12 @@ class XxxWrapper(BaseWrapper):
         return result
 ```
 
-## 新增实体类（lark_entity.py）
+## 新增实体类（wrapper_entity.py）
 
-所有 Result / Item 类统一放在 `lark_entity.py`，使用 Pydantic `BaseModel`。
+所有 Result / Item 类统一放在 `wrapper/wrapper_entity.py`，使用 Pydantic `BaseModel`。
 
 ```python
-# lark_entity.py
+# wrapper/wrapper_entity.py
 class XxxItem(BaseModel):
     """列表子项，字段全部必填"""
     id: str
@@ -86,10 +101,10 @@ class XxxResult(BaseModel):
 
 ## 错误处理规范
 
-`LarkError` 将错误详情拆分为独立字段，便于上层捕获后按需处理：
+`WrapperError`（定义于 `wrapper/wrapper_error.py`）将错误详情拆分为独立字段，便于上层捕获后按需处理：
 
 ```python
-class LarkError(Exception):
+class WrapperError(Exception):
     method: str           # 方法名，如 "send_message"
     code: Optional[int]   # 飞书错误码
     msg: Optional[str]    # 飞书错误描述
@@ -108,7 +123,7 @@ if not response.success():
         if response.raw and response.raw.content
         else {}
     )
-    raise LarkError(
+    raise WrapperError(
         method="method_name",
         code=response.code,
         msg=response.msg,
@@ -118,21 +133,21 @@ if not response.success():
 
 # 2. 响应数据为空
 if response.data is None:
-    raise LarkError(method="method_name", detail="response.data is null")
+    raise WrapperError(method="method_name", detail="response.data is null")
 
 if response.data.xxx is None:
-    raise LarkError(method="method_name", detail="response.data.xxx is null")
+    raise WrapperError(method="method_name", detail="response.data.xxx is null")
 
 # 3. 原始 HTTP 请求失败（SDK 不支持的接口）
 if resp_json.get("code") != 0:
-    raise LarkError(method="method_name", resp=resp_json)
+    raise WrapperError(method="method_name", resp=resp_json)
 ```
 
 禁止：
 
 - `lark.logger.error(...)`
 - `return {}` / `return []`
-- 将所有字段拼接成一个字符串传给 `LarkError`
+- 将所有字段拼接成一个字符串传给 `WrapperError`
 
 ## 成功日志规范
 
@@ -151,5 +166,5 @@ response.raise_for_status()
 resp_json = response.json()
 
 if resp_json.get("code") != 0:
-    raise LarkError(method="method_name", resp=resp_json)
+    raise WrapperError(method="method_name", resp=resp_json)
 ```

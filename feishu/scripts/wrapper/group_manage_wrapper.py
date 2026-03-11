@@ -3,12 +3,15 @@ from lark_oapi.api.im.v1 import (
     ListChatRequest,
     ListChatResponse,
 )
-from lark_entity import LarkError, ListChatResult, ListChatItem
-from lark_wrapper import BaseWrapper
+from .wrapper_entity import *
+from .base_wrapper import BaseWrapper
+from .wrapper_error import WrapperError
 
 
-class GroupWrapper(BaseWrapper):
-    """飞书群组 API 封装类"""
+class GroupManageWrapper(BaseWrapper):
+    """飞书群组 - 群组管理 API 封装类
+    https://open.feishu.cn/document/server-docs/group/chat/intro
+    """
 
     def list_chat(self) -> ListChatResult:
         """
@@ -25,7 +28,7 @@ class GroupWrapper(BaseWrapper):
                 if response.raw and response.raw.content
                 else {}
             )
-            raise LarkError(
+            raise WrapperError(
                 method="list_chat",
                 code=response.code,
                 msg=response.msg,
@@ -34,7 +37,7 @@ class GroupWrapper(BaseWrapper):
             )
 
         if response.data is None:
-            raise LarkError(method="method_name", detail="response.data is null")
+            raise WrapperError(method="method_name", detail="response.data is null")
 
         # 处理业务结果
         items = [

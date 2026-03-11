@@ -8,7 +8,7 @@ from pathlib import Path
 
 
 class LarkAuth:
-    """飞书认证管理类，负责提供 client 和 tenant_access_token（单例模式）"""
+    """飞书认证管理类，负责提供 client 和 tenant_access_token(单例模式)"""
 
     _instance = None
     _initialized = False

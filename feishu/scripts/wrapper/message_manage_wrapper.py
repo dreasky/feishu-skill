@@ -4,15 +4,15 @@ from lark_oapi.api.im.v1 import (
     CreateMessageRequest,
     CreateMessageResponse,
 )
-from lark_entity import (
-    LarkError,
-    SendMessageResult,
-)
-from lark_wrapper import BaseWrapper
+from .wrapper_entity import *
+from .base_wrapper import BaseWrapper
+from .wrapper_error import WrapperError
 
 
-class MessageWrapper(BaseWrapper):
-    # === 消息 API ===
+class MessageManageWrapper(BaseWrapper):
+    """飞书消息 - 消息管理 API 封装
+    https://open.feishu.cn/document/server-docs/im-v1/message/intro
+    """
 
     def send_message(
         self,
@@ -52,7 +52,7 @@ class MessageWrapper(BaseWrapper):
                 if response.raw and response.raw.content
                 else {}
             )
-            raise LarkError(
+            raise WrapperError(
                 method="send_message",
                 code=response.code,
                 msg=response.msg,

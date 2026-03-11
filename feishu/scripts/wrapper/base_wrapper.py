@@ -1,4 +1,4 @@
-from lark_auth import LarkAuth
+from base.lark_auth import LarkAuth
 
 
 class BaseWrapper:

@@ -2,14 +2,9 @@ import argparse
 import asyncio
 import sys
 import os
-from message_wrapper import MessageWrapper
-from group_wrapper import GroupWrapper
-from cloud_document_wrapper import CloudDocumentWrapper
+
+from wrapper import *
 from lark_fast_api import LarkFastAPI
-
-
-def get_fast_api():
-    return LarkFastAPI()
 
 
 # === 消息 API ===
@@ -26,7 +21,7 @@ async def cmd_send_text(args):
 
 async def cmd_list_chat(args):
     """获取群列表"""
-    wrapper = GroupWrapper()
+    wrapper = GroupManageWrapper()
     wrapper.list_chat()
 
 
@@ -35,13 +30,13 @@ async def cmd_list_chat(args):
 
 async def cmd_root_folder(args):
     """获取根文件夹元数据"""
-    wrapper = CloudDocumentWrapper()
+    wrapper = CloudSpaceWrapper()
     wrapper.root_folder()
 
 
 async def cmd_list_file(args):
     """获取文件夹中的文件清单"""
-    wrapper = CloudDocumentWrapper()
+    wrapper = CloudSpaceWrapper()
     wrapper.list_file()
 
 
