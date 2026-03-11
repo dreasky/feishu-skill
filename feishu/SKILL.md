@@ -53,8 +53,7 @@ python scripts/lark_cli.py [command] [options]  # Fails without venv!
 | `root-folder`     | 获取根文件夹  | 无                       |
 | `list-file`       | 获取文件清单  | 无                       |
 | `upload-markdown` | 上传 Markdown | `--file-path`            |
-| `import-task`     | 创建导入任务  | `--file-token`           |
-| `get-import-task` | 查询导入状态  | `--ticket`               |
+
 
 ## 功能列表
 
@@ -88,32 +87,6 @@ python scripts/run.py lark_cli.py list-file
 
 **上传 Markdown 文档到飞书：**
 
-完整流程分为三步：
-
-1. **上传文件**（获取 file_token）：
-
 ```bash
-python scripts/run.py lark_cli.py upload-markdown --file-path "/path/to/document.md"
+python scripts/run.py lark_cli.py upload-markdown --file-path "/path/to/document.md" --file-name "文件名称"
 ```
-
-返回：`file_token` 用于下一步创建导入任务。
-
-2. **创建导入任务**（获取 ticket）：
-
-```bash
-python scripts/run.py lark_cli.py import-task --file-token "上一步获取的file_token" --file-path "/path/to/document.md"
-```
-
-返回：`ticket` 用于查询导入状态。
-
-3. **查询导入任务状态**：
-
-```bash
-python scripts/run.py lark_cli.py get-import-task --ticket "导入任务ticket"
-```
-
-返回：
-
-- 任务状态（导入成功/处理中/内部错误）
-- 文档 Token
-- 文档 URL

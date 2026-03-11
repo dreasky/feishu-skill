@@ -9,3 +9,6 @@
 
 __pycache__
 .data
+.vscode/settings.json
+test/lark_wrapper_test.py
+test/UNIT_TEST.md

@@ -2,13 +2,14 @@ import argparse
 import asyncio
 import sys
 import os
+from message_wrapper import MessageWrapper
+from group_wrapper import GroupWrapper
+from cloud_document_wrapper import CloudDocumentWrapper
+from lark_fast_api import LarkFastAPI
 
-from lark_wrapper import LarkWrapper
 
-
-def get_wrapper() -> LarkWrapper:
-    """获取 LarkWrapper 实例"""
-    return LarkWrapper()
+def get_fast_api():
+    return LarkFastAPI()
 
 
 # === 消息 API ===
@@ -16,8 +17,8 @@ def get_wrapper() -> LarkWrapper:
 
 async def cmd_send_text(args):
     """发送文本消息"""
-    wrapper = get_wrapper()
-    wrapper.send_text(chat_id=args.chat_id, message=args.message)
+    fast_api = LarkFastAPI()
+    fast_api.send_message_custom(chat_id=args.chat_id, message=args.message)
 
 
 # === 群组 API ===
@@ -25,7 +26,7 @@ async def cmd_send_text(args):
 
 async def cmd_list_chat(args):
     """获取群列表"""
-    wrapper = get_wrapper()
+    wrapper = GroupWrapper()
     wrapper.list_chat()
 
 
@@ -34,37 +35,26 @@ async def cmd_list_chat(args):
 
 async def cmd_root_folder(args):
     """获取根文件夹元数据"""
-    wrapper = get_wrapper()
+    wrapper = CloudDocumentWrapper()
     wrapper.root_folder()
 
 
 async def cmd_list_file(args):
     """获取文件夹中的文件清单"""
-    wrapper = get_wrapper()
+    wrapper = CloudDocumentWrapper()
     wrapper.list_file()
 
 
 async def cmd_upload_markdown(args):
     """上传markdown文档"""
-    wrapper = get_wrapper()
-    wrapper.upload_markdown(file_path=args.file_path)
-
-
-async def cmd_import_task(args):
-    """创建导入任务"""
-    wrapper = get_wrapper()
-    # 从 file_token 获取文件名
-    file_name = os.path.basename(args.file_path) if hasattr(args, "file_path") else None
+    file_path = args.file_path
+    file_name = args.file_name
     if not file_name:
-        # 如果没有 file_path，使用默认名称
-        file_name = "imported_document.md"
-    wrapper.import_task(file_token=args.file_token, file_name=file_name)
+        # 没有文件名时默认使用上传文件名称
+        file_name = os.path.basename(file_path)
 
-
-async def cmd_get_import_task(args):
-    """查询导入任务结果"""
-    wrapper = get_wrapper()
-    wrapper.get_import_task(ticket=args.ticket)
+    wrapper = LarkFastAPI()
+    wrapper.upload_markdown(file_path, file_name)
 
 
 def main():
@@ -86,13 +76,7 @@ def main():
 
     p = subparsers.add_parser("upload-markdown", help="上传markdown文档")
     p.add_argument("--file-path", required=True, help="markdown文件路径")
-
-    p = subparsers.add_parser("import-task", help="创建导入任务")
-    p.add_argument("--file-token", required=True, help="要导入文件的token")
-    p.add_argument("--file-path", help="原始文件路径（用于获取文件名）")
-
-    p = subparsers.add_parser("get-import-task", help="查询导入任务结果")
-    p.add_argument("--ticket", required=True, help="导入任务ID")
+    p.add_argument("--file-name", help="上传文件名称")
 
     args = parser.parse_args()
 
@@ -106,8 +90,6 @@ def main():
         "root-folder": cmd_root_folder,
         "list-file": cmd_list_file,
         "upload-markdown": cmd_upload_markdown,
-        "import-task": cmd_import_task,
-        "get-import-task": cmd_get_import_task,
     }
 
     try:
