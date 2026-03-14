@@ -105,7 +105,6 @@ def main():
         "root-folder": cmd_root_folder,
         "list-file": cmd_list_file,
         "upload-file": cmd_upload_file,
-        "upload-file": 
         "get-import-task": cmd_get_import_task,
         "authorize-file": cmd_batch_create_permission_member_custom,
     }
