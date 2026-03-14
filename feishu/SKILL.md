@@ -1,19 +1,9 @@
 ---
 name: feishu
-description: 与飞书集成的技能。当需要与飞书交互或自动化时使用此技能。适合自动化场景。
+description: 与飞书集成的技能。当需要与飞书交互时使用此技能。
 ---
 
 # 飞书集成技能
-
-## 何时使用此技能
-
-当用户：
-
-- 明确提到"飞书"
-- 需要将本地 Markdown 文件上传到飞书云文档
-- 需要自动化发送消息到飞书群聊
-- 需要获取群聊列表、文件列表等信息
-- 需要批量上传文档或执行自动化工作流
 
 ## 关键：始终使用 run.py 包装器
 
@@ -34,16 +24,6 @@ python scripts/lark_cli.py [command] [options]  # Fails without venv!
 3. 激活环境
 4. 正确执行脚本
 
-## 环境配置
-
-如果 `.env` 文件不存在，告诉用户：
-
-1. 访问 [飞书开放平台](https://open.feishu.cn/)获取应用凭证
-2. 参考`.env.example`配置`.env`文件
-3. 在飞书开放平台为应用开通对应权限
-
-配置完成后，告诉我"配置完成"，我将继续执行操作。"
-
 ## 命令速查表
 
 | 命令              | 说明          | 必需参数                 |
@@ -53,7 +33,6 @@ python scripts/lark_cli.py [command] [options]  # Fails without venv!
 | `root-folder`     | 获取根文件夹  | 无                       |
 | `list-file`       | 获取文件清单  | 无                       |
 | `upload-markdown` | 上传 Markdown | `--file-path`            |
-
 
 ## 功能列表
 
