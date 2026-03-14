@@ -1,5 +1,6 @@
 import json
 import time
+from pathlib import Path
 from wrapper import *
 
 
@@ -24,15 +25,29 @@ class LarkFastAPI:
             content=content,
         )
 
-    def upload_markdown(self, file_path: str, file_name: str):
-        """上传本地md文件为docx, 并为机器人所在所有群组添加权限"""
-        # Ensure .md extension
-        if not file_name.endswith(".md"):
-            file_name += ".md"
+    def upload_file(
+        self,
+        file_path: Path,
+        obj_type: str,
+    ):
+        """导入文件(20M以内)
+        https://open.feishu.cn/document/server-docs/docs/drive-v1/import_task/import-user-guide
+
+        file_extension -> obj_type:
+            txt -> docx: 将本地文件扩展名为 txt 的文件导入为新版文档
+            docx -> docx: 将本地文件扩展名为 docx 的文件导入为新版文档
+            xlsx -> sheet: 将本地文件扩展名为 xlsx 的文件导入为电子表格
+            md -> docx: 将本地文件扩展名为 md 的文件导入为新版文档
+        """
+        # 获取文件扩展名（不带.）
+        file_extension = file_path.suffix[1:]
+
+        # 文件名（包含扩展名）
+        file_name = file_path.name
 
         # 上传素材方式上传文件
         extra = json.dumps(
-            {"obj_type": "docx", "file_extension": "md"}, ensure_ascii=False
+            {"obj_type": obj_type, "file_extension": file_extension}, ensure_ascii=False
         )
         upload_media_result = self.cloud_space_wrapper.upload_all_media(
             file_path, file_name, extra
@@ -42,22 +57,14 @@ class LarkFastAPI:
         root_folder_result = self.cloud_space_wrapper.root_folder()
 
         # 创建导入任务
-        import_task_ticket = self.cloud_space_wrapper.create_import_task(
+        self.cloud_space_wrapper.create_import_task(
             mount_key=root_folder_result.token,
-            file_extension="md",
+            file_extension=file_extension,
             file_token=upload_media_result.file_token,
-            type="docx",
+            type=obj_type,
             file_name=file_name,
         )
-
-        # 查询导入任务情况
-        time.sleep(2)
-        import_task_result = self.cloud_space_wrapper.get_import_task(
-            import_task_ticket.ticket
-        )
-
-        # 为文件添加权限
-        self.batch_create_permission_member_custom(file_token=import_task_result.token)
+        print("✅ 导入文件完成, 查询导入任务结果可获取文件url链接")
 
     def create_permission_member_custom(
         self,

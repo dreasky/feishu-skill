@@ -1,8 +1,7 @@
 import argparse
 import asyncio
 import sys
-import os
-
+from pathlib import Path
 from wrapper import *
 from lark_fast_api import LarkFastAPI
 
@@ -40,16 +39,27 @@ async def cmd_list_file(args):
     wrapper.list_file()
 
 
-async def cmd_upload_markdown(args):
-    """上传markdown文档"""
-    file_path = args.file_path
-    file_name = args.file_name
-    if not file_name:
-        # 没有文件名时默认使用上传文件名称
-        file_name = os.path.basename(file_path)
+async def cmd_upload_file(args):
+    """上传文件并创建导入任务"""
+    file_path = Path(args.file_path)
 
     wrapper = LarkFastAPI()
-    wrapper.upload_markdown(file_path, file_name)
+    wrapper.upload_file(
+        file_path=file_path,
+        obj_type=args.obj_type or "docx",
+    )
+
+
+async def cmd_get_import_task(args):
+    """查询导入任务结果"""
+    wrapper = CloudSpaceWrapper()
+    wrapper.get_import_task(args.ticket)
+
+
+async def cmd_batch_create_permission_member_custom(args):
+    """授权文件"""
+    wrapper = LarkFastAPI()
+    wrapper.batch_create_permission_member_custom(args.file_token)
 
 
 def main():
@@ -71,7 +81,17 @@ def main():
 
     p = subparsers.add_parser("upload-markdown", help="上传markdown文档")
     p.add_argument("--file-path", required=True, help="markdown文件路径")
-    p.add_argument("--file-name", help="上传文件名称")
+    p.add_argument("--file-name", help="文件名称")
+
+    p = subparsers.add_parser("upload-file", help="上传文件")
+    p.add_argument("--file-path", required=True, help="文件路径")
+    p.add_argument("--obj-type", help="上传目标类型, 默认docx")
+
+    p = subparsers.add_parser("get-import-task", help="上传文件")
+    p.add_argument("--ticket", required=True, help="任务id")
+
+    p = subparsers.add_parser("authorize-file", help="授权文件权限(全量,群组)")
+    p.add_argument("--file-token", required=True, help="任务id")
 
     args = parser.parse_args()
 
@@ -84,7 +104,10 @@ def main():
         "list-chat": cmd_list_chat,
         "root-folder": cmd_root_folder,
         "list-file": cmd_list_file,
-        "upload-markdown": cmd_upload_markdown,
+        "upload-file": cmd_upload_file,
+        "upload-file": 
+        "get-import-task": cmd_get_import_task,
+        "authorize-file": cmd_batch_create_permission_member_custom,
     }
 
     try:
