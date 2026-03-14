@@ -1,23 +1,14 @@
 import os
 import json
 import requests
-from typing import List
-from lark_oapi.api.drive.v1 import (
-    ListFileRequest,
-    ListFileResponse,
-    UploadAllMediaRequest,
-    UploadAllMediaRequestBody,
-    UploadAllMediaResponse,
-    CreateImportTaskRequest,
-    CreateImportTaskResponse,
-    GetImportTaskRequest,
-    GetImportTaskResponse,
-    ImportTaskMountPoint,
-    ImportTask,
-)
+from pathlib import Path
+from lark_oapi.api.drive.v1 import *
 from .wrapper_entity import *
 from .base_wrapper import BaseWrapper
 from .wrapper_error import WrapperError
+
+
+MAX_FILE_SIZE = 20 * 1024 * 1024
 
 
 class CloudSpaceWrapper(BaseWrapper):
@@ -90,7 +81,7 @@ class CloudSpaceWrapper(BaseWrapper):
 
     def upload_all_media(
         self,
-        file_path: str,
+        file_path: Path,
         file_name: str,
         extra: str,
     ) -> UploadMediaResult:
@@ -98,25 +89,31 @@ class CloudSpaceWrapper(BaseWrapper):
         上传素材
         https://open.feishu.cn/document/server-docs/docs/drive-v1/media/upload_all
         """
-        file_size = os.path.getsize(file_path)
-        file = open(file_path, "rb")
+        file_size = file_path.stat().st_size
 
-        request_body = (
-            UploadAllMediaRequestBody.builder()
-            .file_name(file_name)
-            .parent_type("ccm_import_open")
-            .size(file_size)
-            .extra(extra)
-            .file(file)
-            .build()
-        )
+        if file_size > MAX_FILE_SIZE:
+            raise WrapperError(
+                method="upload_all_media",
+                msg=f"File size {file_size} exceeds limit {MAX_FILE_SIZE}",
+                detail=f"文件过大: '{file_name}' ({file_size} bytes), 当前限制为 {MAX_FILE_SIZE / 1024 / 1024:.1f}MB, 超过限制的文件请使用分片上传接口",
+            )
 
-        request: UploadAllMediaRequest = (
-            UploadAllMediaRequest.builder().request_body(request_body).build()
-        )
-        response: UploadAllMediaResponse = self._client.drive.v1.media.upload_all(
-            request
-        )
+        with file_path.open("rb") as file:
+            request_body = (
+                UploadAllMediaRequestBody.builder()
+                .file_name(file_name)
+                .parent_type("ccm_import_open")
+                .size(file_size)
+                .extra(extra)
+                .file(file)
+                .build()
+            )
+            request: UploadAllMediaRequest = (
+                UploadAllMediaRequest.builder().request_body(request_body).build()
+            )
+            response: UploadAllMediaResponse = self._client.drive.v1.media.upload_all(
+                request
+            )
 
         # 处理失败返回
         if not response.success():
@@ -134,7 +131,9 @@ class CloudSpaceWrapper(BaseWrapper):
             )
 
         if response.data is None:
-            raise WrapperError(method="upload_all_media", detail="response.data is null")
+            raise WrapperError(
+                method="upload_all_media", detail="response.data is null"
+            )
 
         if response.data.file_token is None:
             raise WrapperError(
@@ -197,7 +196,9 @@ class CloudSpaceWrapper(BaseWrapper):
             )
 
         if response.data is None:
-            raise WrapperError(method="create_import_task", detail="response.data is null")
+            raise WrapperError(
+                method="create_import_task", detail="response.data is null"
+            )
 
         if response.data.ticket is None:
             raise WrapperError(

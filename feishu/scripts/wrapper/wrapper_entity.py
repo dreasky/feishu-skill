@@ -41,6 +41,10 @@ class UploadMediaResult(BaseModel):
     file_name: str
 
 
+class UploadFileResult(BaseModel):
+    file_token: str
+    file_name: str
+
 class ImportTaskTicket(BaseModel):
     ticket: str
 
