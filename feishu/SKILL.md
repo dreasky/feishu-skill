@@ -21,12 +21,19 @@ python scripts/run.py lark_cli.py <command> [options]
 
 ### 消息
 
-| 命令        | 说明         | 参数                                  |
-| ----------- | ------------ | ------------------------------------- |
-| `send-text` | 发送文本消息 | `--chat-id` (必填) `--message` (必填) |
+| 命令            | 说明             | 参数                                                                                                                                                           |
+| --------------- | ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `send-text`     | 发送文本消息     | `--chat-id` (必填) `--message` (必填)                                                                                                                          |
+| `list-messages` | 获取会话历史消息 | `--container-id-type` (必填) `--container-id` (必填) `--start-time` (可选) `--end-time` (可选) `--sort-type` (可选) `--page-size` (可选) `--page-token` (可选) |
 
 ```bash
 python scripts/run.py lark_cli.py send-text --chat-id "<chat_id>" --message "<消息内容>"
+
+# 获取群聊历史消息
+python scripts/run.py lark_cli.py list-messages --container-id-type chat --container-id "<chat_id>"
+
+# 指定时间范围和排序
+python scripts/run.py lark_cli.py list-messages --container-id-type chat --container-id "<chat_id>" --start-time "1608594809" --end-time "1609296809" --sort-type ByCreateTimeDesc --page-size 50
 ```
 
 ---
@@ -50,7 +57,6 @@ python scripts/run.py lark_cli.py list-chat
 | ----------------- | ------------------ | ----------------------------------------------------- |
 | `root-folder`     | 获取根文件夹元数据 | 无                                                    |
 | `list-file`       | 获取文件夹文件清单 | 无                                                    |
-| `upload-markdown` | 上传 Markdown 文档 | `--file-path` (必填) `--file-name` (可选)             |
 | `upload-file`     | 上传任意文件       | `--file-path` (必填) `--obj-type` (可选, 默认 `docx`) |
 | `get-import-task` | 查询导入任务结果   | `--ticket` (必填)                                     |
 | `authorize-file`  | 授权文件权限       | `--file-token` (必填)                                 |
@@ -61,9 +67,6 @@ python scripts/run.py lark_cli.py root-folder
 
 # 列出文件
 python scripts/run.py lark_cli.py list-file
-
-# 上传 Markdown
-python scripts/run.py lark_cli.py upload-markdown --file-path "/path/to/doc.md" --file-name "文档名"
 
 # 上传文件（返回 ticket）
 python scripts/run.py lark_cli.py upload-file --file-path "/path/to/file" --obj-type "docx"

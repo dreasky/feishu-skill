@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 from pydantic import BaseModel
 
 
@@ -64,3 +64,32 @@ class PermissionMemberResult(BaseModel):
 
 class BatchPermissionMemberResult(BaseModel):
     member_count: int
+
+
+class MessageSender(BaseModel):
+    id: Optional[str]
+    id_type: Optional[str]
+    sender_type: Optional[str]
+    tenant_key: Optional[str]
+
+
+class MessageItem(BaseModel):
+    message_id: Optional[str]
+    msg_type: Optional[str]
+    create_time: Optional[int]
+    update_time: Optional[int]
+    deleted: Optional[bool]
+    updated: Optional[bool]
+    chat_id: Optional[str] = None
+    root_id: Optional[str] = None
+    parent_id: Optional[str] = None
+    thread_id: Optional[str] = None
+    upper_message_id: Optional[str] = None
+    sender: Optional[MessageSender] = None
+    content: Optional[str] = None
+
+
+class ListMessageResult(BaseModel):
+    items: List[MessageItem]
+    has_more: bool
+    page_token: Optional[str] = None

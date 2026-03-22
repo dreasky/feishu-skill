@@ -1,5 +1,4 @@
 import argparse
-import asyncio
 import sys
 from pathlib import Path
 from wrapper import *
@@ -9,16 +8,30 @@ from lark_fast_api import LarkFastAPI
 # === 消息 API ===
 
 
-async def cmd_send_text(args):
+def cmd_send_text(args):
     """发送文本消息"""
     fast_api = LarkFastAPI()
     fast_api.send_message_custom(chat_id=args.chat_id, message=args.message)
 
 
+def cmd_list_messages(args):
+    """获取会话历史消息"""
+    wrapper = MessageManageWrapper()
+    wrapper.list_messages(
+        container_id_type=args.container_id_type,
+        container_id=args.container_id,
+        start_time=args.start_time,
+        end_time=args.end_time,
+        sort_type=args.sort_type,
+        page_size=args.page_size,
+        page_token=args.page_token,
+    )
+
+
 # === 群组 API ===
 
 
-async def cmd_list_chat(args):
+def cmd_list_chat(args):
     """获取群列表"""
     wrapper = GroupManageWrapper()
     wrapper.list_chat()
@@ -27,19 +40,19 @@ async def cmd_list_chat(args):
 # === 云文档 API ===
 
 
-async def cmd_root_folder(args):
+def cmd_root_folder(args):
     """获取根文件夹元数据"""
     wrapper = CloudSpaceWrapper()
     wrapper.root_folder()
 
 
-async def cmd_list_file(args):
+def cmd_list_file(args):
     """获取文件夹中的文件清单"""
     wrapper = CloudSpaceWrapper()
     wrapper.list_file()
 
 
-async def cmd_upload_file(args):
+def cmd_upload_file(args):
     """上传文件并创建导入任务"""
     file_path = Path(args.file_path)
 
@@ -50,13 +63,13 @@ async def cmd_upload_file(args):
     )
 
 
-async def cmd_get_import_task(args):
+def cmd_get_import_task(args):
     """查询导入任务结果"""
     wrapper = CloudSpaceWrapper()
     wrapper.get_import_task(args.ticket)
 
 
-async def cmd_batch_create_permission_member_custom(args):
+def cmd_batch_create_permission_member_custom(args):
     """授权文件"""
     wrapper = LarkFastAPI()
     wrapper.batch_create_permission_member_custom(args.file_token)
@@ -71,6 +84,15 @@ def main():
     p.add_argument("--chat-id", required=True, help="对话ID")
     p.add_argument("--message", required=True, help="消息文本")
 
+    p = subparsers.add_parser("list-messages", help="获取会话历史消息")
+    p.add_argument("--container-id-type", required=True, help="容器类型: chat 或 thread")
+    p.add_argument("--container-id", required=True, help="容器ID")
+    p.add_argument("--start-time", default=None, help="起始时间（秒级时间戳）")
+    p.add_argument("--end-time", default=None, help="结束时间（秒级时间戳）")
+    p.add_argument("--sort-type", default="ByCreateTimeAsc", help="排序方式，默认 ByCreateTimeAsc")
+    p.add_argument("--page-size", type=int, default=20, help="分页大小，默认20，最大50")
+    p.add_argument("--page-token", default=None, help="分页标记")
+
     # === 群组 API ===
     subparsers.add_parser("list-chat", help="获取用户或机器人所在的群列表")
 
@@ -79,19 +101,15 @@ def main():
 
     subparsers.add_parser("list-file", help="获取文件夹中的文件清单")
 
-    p = subparsers.add_parser("upload-markdown", help="上传markdown文档")
-    p.add_argument("--file-path", required=True, help="markdown文件路径")
-    p.add_argument("--file-name", help="文件名称")
-
     p = subparsers.add_parser("upload-file", help="上传文件")
     p.add_argument("--file-path", required=True, help="文件路径")
     p.add_argument("--obj-type", help="上传目标类型, 默认docx")
 
-    p = subparsers.add_parser("get-import-task", help="上传文件")
-    p.add_argument("--ticket", required=True, help="任务id")
+    p = subparsers.add_parser("get-import-task", help="查询导入任务结果")
+    p.add_argument("--ticket", required=True, help="任务ticket")
 
     p = subparsers.add_parser("authorize-file", help="授权文件权限(全量,群组)")
-    p.add_argument("--file-token", required=True, help="任务id")
+    p.add_argument("--file-token", required=True, help="文件token")
 
     args = parser.parse_args()
 
@@ -101,6 +119,7 @@ def main():
 
     cmd_map = {
         "send-text": cmd_send_text,
+        "list-messages": cmd_list_messages,
         "list-chat": cmd_list_chat,
         "root-folder": cmd_root_folder,
         "list-file": cmd_list_file,
@@ -110,7 +129,7 @@ def main():
     }
 
     try:
-        asyncio.run(cmd_map[args.command](args))
+        cmd_map[args.command](args)
         return 0
     except Exception as e:
         print(f"❌ Error: {e}")
