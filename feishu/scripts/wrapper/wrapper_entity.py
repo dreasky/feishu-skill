@@ -98,3 +98,7 @@ class ListMessageResult(BaseModel):
 class GetMessageResourceResult(BaseModel):
     file_name: str
     file_path: str
+
+
+class GetMessageContentResult(BaseModel):
+    items: List[MessageItem]

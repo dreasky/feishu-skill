@@ -39,6 +39,15 @@ def cmd_get_message_resource(args):
     )
 
 
+def cmd_get_message_content(args):
+    """获取指定消息的内容"""
+    wrapper = MessageManageWrapper()
+    wrapper.get_message_content(
+        message_id=args.message_id,
+        user_id_type=args.user_id_type,
+    )
+
+
 # === 群组 API ===
 
 
@@ -110,6 +119,10 @@ def main():
     p.add_argument("--type", required=True, help="资源类型: image 或 file")
     p.add_argument("--save-dir", required=True, help="文件保存目录")
 
+    p = subparsers.add_parser("get-message-content", help="获取指定消息的内容")
+    p.add_argument("--message-id", required=True, help="消息ID")
+    p.add_argument("--user-id-type", default="open_id", help="用户ID类型: open_id / union_id / user_id，默认 open_id")
+
     # === 群组 API ===
     subparsers.add_parser("list-chat", help="获取用户或机器人所在的群列表")
 
@@ -138,6 +151,7 @@ def main():
         "send-text": cmd_send_text,
         "list-messages": cmd_list_messages,
         "get-message-resource": cmd_get_message_resource,
+        "get-message-content": cmd_get_message_content,
         "list-chat": cmd_list_chat,
         "root-folder": cmd_root_folder,
         "list-file": cmd_list_file,

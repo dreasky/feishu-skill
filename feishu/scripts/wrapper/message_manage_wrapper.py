@@ -8,6 +8,8 @@ from lark_oapi.api.im.v1 import (
     ListMessageResponse,
     GetMessageResourceRequest,
     GetMessageResourceResponse,
+    GetMessageRequest,
+    GetMessageResponse,
 )
 from .wrapper_entity import *
 from .base_wrapper import BaseWrapper
@@ -200,5 +202,69 @@ class MessageManageWrapper(BaseWrapper):
             file_path=str(save_path),
         )
         print(f"✅ get_message_resource success", result.model_dump_json(indent=2))
+        return result
+
+    def get_message_content(
+        self,
+        message_id: str,
+        user_id_type: str = "open_id",
+    ) -> GetMessageContentResult:
+        """
+        获取指定消息的内容
+        https://open.feishu.cn/document/server-docs/im-v1/message/get
+        """
+        request: GetMessageRequest = (
+            GetMessageRequest.builder()
+            .message_id(message_id)
+            .user_id_type(user_id_type)
+            .build()
+        )
+        response: GetMessageResponse = self._client.im.v1.message.get(request)
+
+        if not response.success():
+            resp_data = (
+                json.loads(response.raw.content)
+                if response.raw and response.raw.content
+                else {}
+            )
+            raise WrapperError(
+                method="get_message_content",
+                code=response.code,
+                msg=response.msg,
+                log_id=response.get_log_id(),
+                resp=resp_data,
+            )
+
+        if response.data is None:
+            raise WrapperError(method="get_message_content", detail="response.data is null")
+
+        items = []
+        for msg in (response.data.items or []):
+            sender = None
+            if msg.sender:
+                sender = MessageSender(
+                    id=msg.sender.id,
+                    id_type=msg.sender.id_type,
+                    sender_type=msg.sender.sender_type,
+                    tenant_key=msg.sender.tenant_key,
+                )
+            items.append(MessageItem(
+                message_id=msg.message_id,
+                msg_type=msg.msg_type,
+                create_time=msg.create_time,
+                update_time=msg.update_time,
+                deleted=msg.deleted,
+                updated=msg.updated,
+                chat_id=msg.chat_id,
+                root_id=msg.root_id,
+                parent_id=msg.parent_id,
+                thread_id=msg.thread_id,
+                upper_message_id=msg.upper_message_id,
+                sender=sender,
+                content=msg.body.content if msg.body else None,
+            ))
+
+        result = GetMessageContentResult(items=items)
+        print(f"✅ get_message_content success", result.model_dump_json(indent=2))
         return result
 

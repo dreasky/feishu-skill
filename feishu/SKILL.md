@@ -21,17 +21,18 @@ python scripts/run.py lark_cli.py <command> [options]
 
 ### 速查索引
 
-| 类别   | 命令                   | 说明                   |
-| ------ | ---------------------- | ---------------------- |
-| 消息   | `send-text`            | 发送文本消息           |
-| 消息   | `list-messages`        | 获取会话历史消息       |
-| 消息   | `get-message-resource` | 获取消息中的资源文件   |
-| 群组   | `list-chat`            | 获取机器人所在的群列表 |
-| 云文档 | `root-folder`          | 获取根文件夹元数据     |
-| 云文档 | `list-file`            | 获取文件夹文件清单     |
-| 云文档 | `upload-file`          | 上传任意文件           |
-| 云文档 | `get-import-task`      | 查询导入任务结果       |
-| 云文档 | `authorize-file`       | 授权文件权限           |
+| 类别   | 命令                    | 说明                   |
+| ------ | ----------------------- | ---------------------- |
+| 消息   | `send-text`             | 发送文本消息           |
+| 消息   | `list-messages`         | 获取会话历史消息       |
+| 消息   | `get-message-content`   | 获取指定消息的内容     |
+| 消息   | `get-message-resource`  | 获取消息中的资源文件   |
+| 群组   | `list-chat`             | 获取机器人所在的群列表 |
+| 云文档 | `root-folder`           | 获取根文件夹元数据     |
+| 云文档 | `list-file`             | 获取文件夹文件清单     |
+| 云文档 | `upload-file`           | 上传任意文件           |
+| 云文档 | `get-import-task`       | 查询导入任务结果       |
+| 云文档 | `authorize-file`        | 授权文件权限           |
 
 ---
 
@@ -72,14 +73,27 @@ python scripts/run.py lark_cli.py list-messages --container-id-type chat --conta
 
 ---
 
+#### `get-message-content` — 获取指定消息的内容
+
+| 参数              | 必填 | 说明                                                    |
+| ----------------- | ---- | ------------------------------------------------------- |
+| `--message-id`    | 是   | 消息 ID                                                 |
+| `--user-id-type`  | 否   | 用户 ID 类型（`open_id` / `union_id` / `user_id`，默认 `open_id`） |
+
+```bash
+python scripts/run.py lark_cli.py get-message-content --message-id "<message_id>"
+```
+
+---
+
 #### `get-message-resource` — 获取消息中的资源文件
 
-| 参数           | 必填 | 说明                              |
-| -------------- | ---- | --------------------------------- |
-| `--message-id` | 是   | 消息 ID                           |
-| `--file-key`   | 是   | 资源 key                          |
-| `--type`       | 是   | 资源类型（`image` / `file` 等）   |
-| `--save-dir`   | 是   | 保存目录                          |
+| 参数           | 必填 | 说明                            |
+| -------------- | ---- | ------------------------------- |
+| `--message-id` | 是   | 消息 ID                         |
+| `--file-key`   | 是   | 资源 key                        |
+| `--type`       | 是   | 资源类型（`image` / `file`）    |
+| `--save-dir`   | 是   | 保存目录                        |
 
 ```bash
 # 下载图片
