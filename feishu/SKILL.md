@@ -19,27 +19,73 @@ python scripts/run.py lark_cli.py <command> [options]
 
 ## 命令参考
 
+### 速查索引
+
+| 类别   | 命令                   | 说明                   |
+| ------ | ---------------------- | ---------------------- |
+| 消息   | `send-text`            | 发送文本消息           |
+| 消息   | `list-messages`        | 获取会话历史消息       |
+| 消息   | `get-message-resource` | 获取消息中的资源文件   |
+| 群组   | `list-chat`            | 获取机器人所在的群列表 |
+| 云文档 | `root-folder`          | 获取根文件夹元数据     |
+| 云文档 | `list-file`            | 获取文件夹文件清单     |
+| 云文档 | `upload-file`          | 上传任意文件           |
+| 云文档 | `get-import-task`      | 查询导入任务结果       |
+| 云文档 | `authorize-file`       | 授权文件权限           |
+
+---
+
 ### 消息
 
-| 命令                    | 说明             | 参数                                                                                                                                                           |
-| ----------------------- | ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `send-text`             | 发送文本消息     | `--chat-id` (必填) `--message` (必填)                                                                                                                          |
-| `list-messages`         | 获取会话历史消息 | `--container-id-type` (必填) `--container-id` (必填) `--start-time` (可选) `--end-time` (可选) `--sort-type` (可选) `--page-size` (可选) `--page-token` (可选) |
-| `get-message-resource`  | 获取消息资源文件 | `--message-id` (必填) `--file-key` (必填) `--type` (必填) `--save-dir` (必填)                                                                                  |
+#### `send-text` — 发送文本消息
+
+| 参数        | 必填 | 说明     |
+| ----------- | ---- | -------- |
+| `--chat-id` | 是   | 会话 ID  |
+| `--message` | 是   | 消息内容 |
 
 ```bash
 python scripts/run.py lark_cli.py send-text --chat-id "<chat_id>" --message "<消息内容>"
+```
 
+---
+
+#### `list-messages` — 获取会话历史消息
+
+| 参数                    | 必填 | 说明                              |
+| ----------------------- | ---- | --------------------------------- |
+| `--container-id-type`   | 是   | 容器类型（如 `chat`）             |
+| `--container-id`        | 是   | 容器 ID                           |
+| `--start-time`          | 否   | 起始时间戳                        |
+| `--end-time`            | 否   | 结束时间戳                        |
+| `--sort-type`           | 否   | 排序方式（如 `ByCreateTimeDesc`） |
+| `--page-size`           | 否   | 每页数量                          |
+| `--page-token`          | 否   | 翻页 token                        |
+
+```bash
 # 获取群聊历史消息
 python scripts/run.py lark_cli.py list-messages --container-id-type chat --container-id "<chat_id>"
 
 # 指定时间范围和排序
 python scripts/run.py lark_cli.py list-messages --container-id-type chat --container-id "<chat_id>" --start-time "1608594809" --end-time "1609296809" --sort-type ByCreateTimeDesc --page-size 50
+```
 
-# 下载消息中的图片
+---
+
+#### `get-message-resource` — 获取消息中的资源文件
+
+| 参数           | 必填 | 说明                              |
+| -------------- | ---- | --------------------------------- |
+| `--message-id` | 是   | 消息 ID                           |
+| `--file-key`   | 是   | 资源 key                          |
+| `--type`       | 是   | 资源类型（`image` / `file` 等）   |
+| `--save-dir`   | 是   | 保存目录                          |
+
+```bash
+# 下载图片
 python scripts/run.py lark_cli.py get-message-resource --message-id "<message_id>" --file-key "<file_key>" --type image --save-dir "/tmp/downloads"
 
-# 下载消息中的文件/音频/视频
+# 下载文件/音频/视频
 python scripts/run.py lark_cli.py get-message-resource --message-id "<message_id>" --file-key "<file_key>" --type file --save-dir "/tmp/downloads"
 ```
 
@@ -47,40 +93,73 @@ python scripts/run.py lark_cli.py get-message-resource --message-id "<message_id
 
 ### 群组
 
-| 命令        | 说明                   | 参数 |
-| ----------- | ---------------------- | ---- |
-| `list-chat` | 获取机器人所在的群列表 | 无   |
+#### `list-chat` — 获取机器人所在的群列表
+
+无参数。返回群名称 + chat_id。
 
 ```bash
 python scripts/run.py lark_cli.py list-chat
-# 返回：群名称 + chat_id
 ```
 
 ---
 
 ### 云文档
 
-| 命令              | 说明               | 参数                                                  |
-| ----------------- | ------------------ | ----------------------------------------------------- |
-| `root-folder`     | 获取根文件夹元数据 | 无                                                    |
-| `list-file`       | 获取文件夹文件清单 | 无                                                    |
-| `upload-file`     | 上传任意文件       | `--file-path` (必填) `--obj-type` (可选, 默认 `docx`) |
-| `get-import-task` | 查询导入任务结果   | `--ticket` (必填)                                     |
-| `authorize-file`  | 授权文件权限       | `--file-token` (必填)                                 |
+#### `root-folder` — 获取根文件夹元数据
+
+无参数。
 
 ```bash
-# 查看根文件夹
 python scripts/run.py lark_cli.py root-folder
+```
 
-# 列出文件
+---
+
+#### `list-file` — 获取文件夹文件清单
+
+无参数。
+
+```bash
 python scripts/run.py lark_cli.py list-file
+```
 
-# 上传文件（返回 ticket）
+---
+
+#### `upload-file` — 上传任意文件
+
+| 参数          | 必填 | 说明                        |
+| ------------- | ---- | --------------------------- |
+| `--file-path` | 是   | 本地文件路径                |
+| `--obj-type`  | 否   | 文档类型（默认 `docx`）     |
+
+返回 ticket，用于后续查询导入任务。
+
+```bash
 python scripts/run.py lark_cli.py upload-file --file-path "/path/to/file" --obj-type "docx"
+```
 
-# 查询导入任务（用 upload-file 返回的 ticket）
+---
+
+#### `get-import-task` — 查询导入任务结果
+
+| 参数       | 必填 | 说明                          |
+| ---------- | ---- | ----------------------------- |
+| `--ticket` | 是   | `upload-file` 返回的 ticket   |
+
+```bash
 python scripts/run.py lark_cli.py get-import-task --ticket "<ticket>"
+```
 
-# 授权文件（全量群组）
+---
+
+#### `authorize-file` — 授权文件权限
+
+| 参数           | 必填 | 说明       |
+| -------------- | ---- | ---------- |
+| `--file-token` | 是   | 文件 token |
+
+授权范围：全量群组。
+
+```bash
 python scripts/run.py lark_cli.py authorize-file --file-token "<file_token>"
 ```
