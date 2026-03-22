@@ -93,3 +93,8 @@ class ListMessageResult(BaseModel):
     items: List[MessageItem]
     has_more: bool
     page_token: Optional[str] = None
+
+
+class GetMessageResourceResult(BaseModel):
+    file_name: str
+    file_path: str

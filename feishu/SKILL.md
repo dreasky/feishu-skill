@@ -21,10 +21,11 @@ python scripts/run.py lark_cli.py <command> [options]
 
 ### 消息
 
-| 命令            | 说明             | 参数                                                                                                                                                           |
-| --------------- | ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `send-text`     | 发送文本消息     | `--chat-id` (必填) `--message` (必填)                                                                                                                          |
-| `list-messages` | 获取会话历史消息 | `--container-id-type` (必填) `--container-id` (必填) `--start-time` (可选) `--end-time` (可选) `--sort-type` (可选) `--page-size` (可选) `--page-token` (可选) |
+| 命令                    | 说明             | 参数                                                                                                                                                           |
+| ----------------------- | ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `send-text`             | 发送文本消息     | `--chat-id` (必填) `--message` (必填)                                                                                                                          |
+| `list-messages`         | 获取会话历史消息 | `--container-id-type` (必填) `--container-id` (必填) `--start-time` (可选) `--end-time` (可选) `--sort-type` (可选) `--page-size` (可选) `--page-token` (可选) |
+| `get-message-resource`  | 获取消息资源文件 | `--message-id` (必填) `--file-key` (必填) `--type` (必填) `--save-dir` (必填)                                                                                  |
 
 ```bash
 python scripts/run.py lark_cli.py send-text --chat-id "<chat_id>" --message "<消息内容>"
@@ -34,6 +35,12 @@ python scripts/run.py lark_cli.py list-messages --container-id-type chat --conta
 
 # 指定时间范围和排序
 python scripts/run.py lark_cli.py list-messages --container-id-type chat --container-id "<chat_id>" --start-time "1608594809" --end-time "1609296809" --sort-type ByCreateTimeDesc --page-size 50
+
+# 下载消息中的图片
+python scripts/run.py lark_cli.py get-message-resource --message-id "<message_id>" --file-key "<file_key>" --type image --save-dir "/tmp/downloads"
+
+# 下载消息中的文件/音频/视频
+python scripts/run.py lark_cli.py get-message-resource --message-id "<message_id>" --file-key "<file_key>" --type file --save-dir "/tmp/downloads"
 ```
 
 ---

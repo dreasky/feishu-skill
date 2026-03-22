@@ -28,6 +28,17 @@ def cmd_list_messages(args):
     )
 
 
+def cmd_get_message_resource(args):
+    """获取消息中的资源文件"""
+    wrapper = MessageManageWrapper()
+    wrapper.get_message_resource(
+        message_id=args.message_id,
+        file_key=args.file_key,
+        type=args.type,
+        save_dir=args.save_dir,
+    )
+
+
 # === 群组 API ===
 
 
@@ -93,6 +104,12 @@ def main():
     p.add_argument("--page-size", type=int, default=20, help="分页大小，默认20，最大50")
     p.add_argument("--page-token", default=None, help="分页标记")
 
+    p = subparsers.add_parser("get-message-resource", help="获取消息中的资源文件")
+    p.add_argument("--message-id", required=True, help="消息ID")
+    p.add_argument("--file-key", required=True, help="资源Key")
+    p.add_argument("--type", required=True, help="资源类型: image 或 file")
+    p.add_argument("--save-dir", required=True, help="文件保存目录")
+
     # === 群组 API ===
     subparsers.add_parser("list-chat", help="获取用户或机器人所在的群列表")
 
@@ -120,6 +137,7 @@ def main():
     cmd_map = {
         "send-text": cmd_send_text,
         "list-messages": cmd_list_messages,
+        "get-message-resource": cmd_get_message_resource,
         "list-chat": cmd_list_chat,
         "root-folder": cmd_root_folder,
         "list-file": cmd_list_file,

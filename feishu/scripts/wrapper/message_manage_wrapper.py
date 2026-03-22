@@ -1,10 +1,13 @@
 import json
+from pathlib import Path
 from lark_oapi.api.im.v1 import (
     CreateMessageRequestBody,
     CreateMessageRequest,
     CreateMessageResponse,
     ListMessageRequest,
     ListMessageResponse,
+    GetMessageResourceRequest,
+    GetMessageResourceResponse,
 )
 from .wrapper_entity import *
 from .base_wrapper import BaseWrapper
@@ -150,3 +153,52 @@ class MessageManageWrapper(BaseWrapper):
         )
         print(f"✅ list_messages success", result.model_dump_json(indent=2))
         return result
+
+    def get_message_resource(
+        self,
+        message_id: str,
+        file_key: str,
+        type: str,
+        save_dir: str,
+    ) -> GetMessageResourceResult:
+        """
+        获取消息中的资源文件（图片、音频、视频、文件）
+        https://open.feishu.cn/document/server-docs/im-v1/message-content/get-2
+        """
+        request: GetMessageResourceRequest = (
+            GetMessageResourceRequest.builder()
+            .message_id(message_id)
+            .file_key(file_key)
+            .type(type)
+            .build()
+        )
+        response: GetMessageResourceResponse = self._client.im.v1.message_resource.get(request)
+
+        if not response.success():
+            resp_data = (
+                json.loads(response.raw.content)
+                if response.raw and response.raw.content
+                else {}
+            )
+            raise WrapperError(
+                method="get_message_resource",
+                code=response.code,
+                msg=response.msg,
+                log_id=response.get_log_id(),
+                resp=resp_data,
+            )
+
+        if response.file is None:
+            raise WrapperError(method="get_message_resource", detail="response.file is null")
+
+        save_path = Path(save_dir) / response.file_name
+        save_path.parent.mkdir(parents=True, exist_ok=True)
+        save_path.write_bytes(response.file.read())
+
+        result = GetMessageResourceResult(
+            file_name=response.file_name,
+            file_path=str(save_path),
+        )
+        print(f"✅ get_message_resource success", result.model_dump_json(indent=2))
+        return result
+
