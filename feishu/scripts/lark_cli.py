@@ -57,6 +57,15 @@ def cmd_list_chat(args):
     wrapper.list_chat()
 
 
+# === 机器人 API ===
+
+
+def cmd_get_bot_info(args):
+    """获取机器人信息"""
+    wrapper = RobotWrapper()
+    wrapper.get_bot_info()
+
+
 # === 云文档 API ===
 
 
@@ -126,6 +135,9 @@ def main():
     # === 群组 API ===
     subparsers.add_parser("list-chat", help="获取用户或机器人所在的群列表")
 
+    # === 机器人 API ===
+    subparsers.add_parser("get-bot-info", help="获取机器人信息")
+
     # === 云文档 API ===
     subparsers.add_parser("root-folder", help="获取我的空间（根文件夹）元数据")
 
@@ -153,6 +165,7 @@ def main():
         "get-message-resource": cmd_get_message_resource,
         "get-message-content": cmd_get_message_content,
         "list-chat": cmd_list_chat,
+        "get-bot-info": cmd_get_bot_info,
         "root-folder": cmd_root_folder,
         "list-file": cmd_list_file,
         "upload-file": cmd_upload_file,

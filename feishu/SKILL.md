@@ -28,6 +28,7 @@ python scripts/run.py lark_cli.py <command> [options]
 | 消息   | `get-message-content`   | 获取指定消息的内容     |
 | 消息   | `get-message-resource`  | 获取消息中的资源文件   |
 | 群组   | `list-chat`             | 获取机器人所在的群列表 |
+| 机器人 | `get-bot-info`          | 获取机器人信息         |
 | 云文档 | `root-folder`           | 获取根文件夹元数据     |
 | 云文档 | `list-file`             | 获取文件夹文件清单     |
 | 云文档 | `upload-file`           | 上传任意文件           |
@@ -113,6 +114,18 @@ python scripts/run.py lark_cli.py get-message-resource --message-id "<message_id
 
 ```bash
 python scripts/run.py lark_cli.py list-chat
+```
+
+---
+
+### 机器人
+
+#### `get-bot-info` — 获取机器人信息
+
+无参数。返回机器人名称、open_id、头像、启用状态。
+
+```bash
+python scripts/run.py lark_cli.py get-bot-info
 ```
 
 ---

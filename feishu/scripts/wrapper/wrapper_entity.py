@@ -102,3 +102,11 @@ class GetMessageResourceResult(BaseModel):
 
 class GetMessageContentResult(BaseModel):
     items: List[MessageItem]
+
+
+class GetBotInfoResult(BaseModel):
+    open_id: str
+    app_name: str
+    avatar_url: str
+    activate_status: int
+    ip_white_list: List[str]
