@@ -1,42 +1,16 @@
 import json
-import uuid
-from enum import Enum
 from pathlib import Path
 from typing import Optional
-from pydantic import BaseModel
-
-
-class FolderStatus(str, Enum):
-    PENDING = "待处理"
-    DOWNLOADED = "已下载"
-    SUBMITTED = "已提交"
-    FAILED = "处理失败"
-
-
-class FolderTask(BaseModel):
-    status: FolderStatus = FolderStatus.PENDING
-    local_path: Optional[str] = None   # 已下载时记录本地路径
-    error: Optional[str] = None        # 处理失败时记录原因
-
-
-class FolderItem(BaseModel):
-    file_key: str
-    file_name: str
-    group_uuid: str                   # 分组标识，同一批次上传的文件共享
-    task: FolderTask = FolderTask()
-
-
-class FolderStore(BaseModel):
-    items: dict[str, FolderItem] = {}
+from .entity import FolderItem, FolderStore, FolderStatus
 
 
 class FolderLibrary:
-    """飞书 folder 消息文件库，以 file_key 为唯一键持久化管理"""
+    """飞书文件库，按 chat_id 隔离存储，以 file_key 为唯一键"""
 
-    def __init__(self, path: Optional[Path] = None):
-        self._path = (
-            path or Path(__file__).parent.parent / "data" / "folder_library.json"
-        )
+    def __init__(self, chat_id: str, base_path: Optional[Path] = None):
+        self._chat_id = chat_id
+        base = base_path or Path(__file__).parent.parent / "data" / "chats"
+        self._path = base / chat_id / "library.json"
         self._path.parent.mkdir(parents=True, exist_ok=True)
 
     def _load(self) -> FolderStore:
@@ -55,16 +29,27 @@ class FolderLibrary:
             encoding="utf-8",
         )
 
-    def add(self, file_key: str, file_name: str, group_uuid: str) -> bool:
+    def add(
+        self,
+        file_key: str,
+        file_name: str,
+        chat_id: str,
+        chat_type: str,
+        group_uuid: str,
+    ) -> bool:
         """新增记录，已存在则跳过。返回是否实际写入。"""
         store = self._load()
         if file_key in store.items:
             return False
         store.items[file_key] = FolderItem(
-            file_key=file_key, file_name=file_name, group_uuid=group_uuid
+            file_key=file_key,
+            file_name=file_name,
+            chat_id=chat_id,
+            chat_type=chat_type,
+            group_uuid=group_uuid,
         )
         self._save(store)
-        print(f"📁 新增文件记录: {file_name} ({file_key}) [分组: {group_uuid[:8]}...]")
+        print(f"📁 新增文件记录: {file_name} [分组: {group_uuid}]")
         return True
 
     def get(self, file_key: str) -> Optional[FolderItem]:
@@ -78,11 +63,11 @@ class FolderLibrary:
             return False
         del store.items[file_key]
         self._save(store)
-        print(f"🗑️ 已移除文件库记录: {file_key}")
+        print(f"🗑️ 已移除文件记录: {file_key}")
         return True
 
     def search(self, keyword: str) -> list[FolderItem]:
-        """按 file_name 模糊搜索，返回匹配的记录列表。"""
+        """按 file_name 模糊搜索。"""
         keyword = keyword.lower()
         return [
             item
@@ -95,7 +80,8 @@ class FolderLibrary:
         return list(self._load().items.values())
 
     def set_downloaded(self, file_key: str, local_path: str) -> bool:
-        """标记为已下载，记录本地路径。"""
+        """标记为已下载。"""
+        from .entity import FolderTask
         store = self._load()
         if file_key not in store.items:
             return False
@@ -117,7 +103,8 @@ class FolderLibrary:
         return True
 
     def set_failed(self, file_key: str, error: str) -> bool:
-        """标记为处理失败，记录失败原因。"""
+        """标记为处理失败。"""
+        from .entity import FolderTask
         store = self._load()
         if file_key not in store.items:
             return False
@@ -129,19 +116,19 @@ class FolderLibrary:
         return True
 
     def filter_by_status(self, status: FolderStatus) -> list[FolderItem]:
-        """按任务状态筛选记录。"""
+        """按任务状态筛选。"""
         return [
             item for item in self._load().items.values()
             if item.task.status == status
         ]
 
     def filter_by_group(self, group_uuid: str) -> list[FolderItem]:
-        """按分组 UUID 筛选记录。"""
+        """按分组 UUID 筛选。"""
         return [
             item for item in self._load().items.values()
             if item.group_uuid == group_uuid
         ]
 
     def list_groups(self) -> list[str]:
-        """返回所有分组 UUID 列表（去重）。"""
+        """返回所有分组 UUID（去重）。"""
         return list({item.group_uuid for item in self._load().items.values()})

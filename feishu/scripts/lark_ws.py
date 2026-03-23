@@ -1,7 +1,7 @@
 import os
 from dotenv import load_dotenv
-from .wrapper import RobotWrapper
-from .folder_manage import FileCollectorBot
+from wrapper import RobotWrapper
+from folder_manage import FileCollectorBot
 
 load_dotenv()
 APP_ID = os.getenv("FEISHU_APP_ID")

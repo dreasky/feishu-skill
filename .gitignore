@@ -11,6 +11,7 @@ __pycache__
 .data
 .vscode/
 test/
+data
 
 # 项目临时忽略
 api_doc
