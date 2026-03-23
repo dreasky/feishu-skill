@@ -33,6 +33,8 @@ class FolderLibrary:
         self,
         file_key: str,
         file_name: str,
+        message_id: str,
+        file_type: str,
         chat_id: str,
         chat_type: str,
         group_uuid: str,
@@ -44,6 +46,8 @@ class FolderLibrary:
         store.items[file_key] = FolderItem(
             file_key=file_key,
             file_name=file_name,
+            message_id=message_id,
+            file_type=file_type,
             chat_id=chat_id,
             chat_type=chat_type,
             group_uuid=group_uuid,

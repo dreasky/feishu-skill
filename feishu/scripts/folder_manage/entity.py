@@ -20,6 +20,8 @@ class FolderTask(BaseModel):
 class FolderItem(BaseModel):
     file_key: str
     file_name: str
+    message_id: str
+    file_type: str       # message.message_type
     chat_id: str
     chat_type: str
     group_uuid: str

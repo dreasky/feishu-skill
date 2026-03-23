@@ -30,6 +30,7 @@ class FileCollectorBot:
         """延迟初始化 MessageManageWrapper"""
         if self._message_wrapper is None:
             from wrapper import MessageManageWrapper
+
             self._message_wrapper = MessageManageWrapper()
         return self._message_wrapper
 
@@ -64,10 +65,7 @@ class FileCollectorBot:
         chat_type = message.chat_type
 
         # 检查是否 @ 机器人
-        is_at_bot = any(
-            m.id and m.id.open_id == self._bot_open_id
-            for m in mentions
-        )
+        is_at_bot = any(m.id and m.id.open_id == self._bot_open_id for m in mentions)
 
         # @ 机器人 -> 检查文件并发送确认
         if is_at_bot:
@@ -101,9 +99,7 @@ class FileCollectorBot:
         self._send_confirm_message(chat_id, group_uuid, files)
         self._confirm_states.set_waiting(chat_id, group_uuid, len(files))
 
-    def _send_confirm_message(
-        self, chat_id: str, group_uuid: str, files: list
-    ) -> None:
+    def _send_confirm_message(self, chat_id: str, group_uuid: str, files: list) -> None:
         """发送确认消息"""
         file_list = "\n".join([f"  - {f.file_name}" for f in files])
         content = json.dumps(
@@ -148,6 +144,11 @@ class FileCollectorBot:
         """确认处理"""
         # TODO: 调用 Claude 接口
         self._send_text_message(chat_id, "✅ 已确认，正在处理...")
+
+        folder_library = self._get_library(chat_id)
+        file_list = folder_library.filter_by_group(state.group_uuid)
+        self._get_message_wrapper().get_message_resource
+
         # 开启新分组
         self._get_group_manager(chat_id).new_group()
 
@@ -158,9 +159,7 @@ class FileCollectorBot:
         files = library.filter_by_group(state.group_uuid)
         for f in files:
             library.remove(f.file_key)
-        self._send_text_message(
-            chat_id, "❌ 已取消，请重新上传文件后再 @ 我。"
-        )
+        self._send_text_message(chat_id, "❌ 已取消，请重新上传文件后再 @ 我。")
         # 开启新分组
         self._get_group_manager(chat_id).new_group()
 
@@ -181,10 +180,12 @@ class FileCollectorBot:
         content = json.loads(message.content)
         file_key = content.get("file_key")
         file_name = content.get("file_name", "")
+        message_id = message.message_id
+        file_type = message.message_type
         if file_key:
             group_uuid = self._get_group_manager(chat_id).get_current()
             self._get_library(chat_id).add(
-                file_key, file_name, chat_id, chat_type, group_uuid
+                file_key, file_name, message_id, file_type, chat_id, chat_type, group_uuid
             )
 
     def start(self) -> None:
