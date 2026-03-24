@@ -6,7 +6,7 @@ from .folder_library import FolderLibrary
 from .group_manager import GroupManager
 from .confirm_state_manager import ConfirmStateManager
 from .entity import ConfirmState
-from ..claude_launcher import ClaudeLauncher
+from claude_launcher import ClaudeLauncher
 
 
 class FileCollectorBot:
