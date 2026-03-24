@@ -6,6 +6,7 @@ from .folder_library import FolderLibrary
 from .group_manager import GroupManager
 from .confirm_state_manager import ConfirmStateManager
 from .entity import ConfirmState
+from ..claude_launcher import ClaudeLauncher
 
 
 class FileCollectorBot:
@@ -16,10 +17,12 @@ class FileCollectorBot:
         app_id: str,
         app_secret: str,
         bot_open_id: str,
+        project_dir: Path,
         base_path: Optional[Path] = None,
     ):
         self._bot_open_id = bot_open_id
         self._base_path = base_path
+        self._project_dir = project_dir
         self._libraries: dict[str, FolderLibrary] = {}
         self._group_managers: dict[str, GroupManager] = {}
         self._confirm_states = ConfirmStateManager()
@@ -142,13 +145,32 @@ class FileCollectorBot:
 
     def _handle_confirm_yes(self, chat_id: str, state: ConfirmState) -> None:
         """确认处理"""
-        # TODO: 调用 Claude 接口
         self._send_text_message(chat_id, "✅ 已确认，正在处理...")
 
+        # 获取文件列表
         folder_library = self._get_library(chat_id)
         file_list = folder_library.filter_by_group(state.group_uuid)
-        self._get_message_wrapper().get_message_resource
 
+        # 下载文件到项目目录
+        workdir = self._project_dir / "output" / chat_id / state.group_uuid
+        input_dir = workdir / "input"
+        input_dir.mkdir(parents=True, exist_ok=True)
+        for file in file_list:
+            self._get_message_wrapper().get_message_resource(
+                message_id=file.message_id,
+                file_key=file.file_key,
+                type=file.file_type,
+                save_dir=input_dir,
+            )
+
+        # 创建Claude code启动器并启动
+        launcher = ClaudeLauncher(workdir=str(self._project_dir))
+        prompt = f"/tender-workflow WORK_DIR: {workdir}"
+
+        launcher.launch(
+            prompt=prompt,
+            permission_mode="acceptEdits"
+        )
         # 开启新分组
         self._get_group_manager(chat_id).new_group()
 
@@ -185,7 +207,13 @@ class FileCollectorBot:
         if file_key:
             group_uuid = self._get_group_manager(chat_id).get_current()
             self._get_library(chat_id).add(
-                file_key, file_name, message_id, file_type, chat_id, chat_type, group_uuid
+                file_key,
+                file_name,
+                message_id,
+                file_type,
+                chat_id,
+                chat_type,
+                group_uuid,
             )
 
     def start(self) -> None:

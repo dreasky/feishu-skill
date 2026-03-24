@@ -1,4 +1,6 @@
+import argparse
 import os
+from pathlib import Path
 from dotenv import load_dotenv
 from wrapper import RobotWrapper
 from folder_manage import FileCollectorBot
@@ -9,6 +11,13 @@ APP_SECRET = os.getenv("FEISHU_APP_SECRET")
 
 
 def main():
+    parser = argparse.ArgumentParser(description="飞书文件收集机器人")
+    parser.add_argument("-d", "--project-dir", type=str, required=True, help="项目目录")
+    args = parser.parse_args()
+
+    project_dir = Path(args.project_dir)
+    print(f"📃 项目目录: {args.project_dir}")
+
     if not APP_ID or not APP_SECRET:
         raise EnvironmentError(
             "❌ 未找到 FEISHU_APP_ID 或 FEISHU_APP_SECRET, 请检查 .env 文件"
@@ -18,7 +27,9 @@ def main():
     if not bot_info or not bot_info.open_id:
         raise EnvironmentError("❌ 未获取到机器人信息, 请检查是否启用了机器人")
 
-    bot = FileCollectorBot(APP_ID, APP_SECRET, bot_info.open_id)
+    bot = FileCollectorBot(
+        APP_ID, APP_SECRET, bot_info.open_id, project_dir=project_dir
+    )
     bot.start()
 
 

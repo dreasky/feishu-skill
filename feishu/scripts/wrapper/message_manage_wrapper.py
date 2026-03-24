@@ -161,11 +161,11 @@ class MessageManageWrapper(BaseWrapper):
         message_id: str,
         file_key: str,
         type: str,
-        save_dir: str,
+        save_dir: Path,
     ) -> GetMessageResourceResult:
         """
         获取消息中的资源文件（图片、音频、视频、文件）
-        https://open.feishu.cn/document/server-docs/im-v1/message-content/get-2
+        https://open.feishu.cn/document/server-docs/im-v1/message/get-2
         """
         request: GetMessageResourceRequest = (
             GetMessageResourceRequest.builder()
@@ -193,7 +193,10 @@ class MessageManageWrapper(BaseWrapper):
         if response.file is None:
             raise WrapperError(method="get_message_resource", detail="response.file is null")
 
-        save_path = Path(save_dir) / response.file_name
+        if response.file_name is None:
+            raise WrapperError(method="get_message_resource", detail="response.file_name is null")
+
+        save_path = save_dir / response.file_name
         save_path.parent.mkdir(parents=True, exist_ok=True)
         save_path.write_bytes(response.file.read())
 
