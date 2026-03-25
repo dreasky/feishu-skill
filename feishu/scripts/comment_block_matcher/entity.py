@@ -22,3 +22,10 @@ class MatchResult(BaseModel):
     total_blocks: int                # 匹配的块总数
     total_comments: int              # 评论总数
     matches: List[BlockMatch]        # 匹配结果列表
+
+
+class MatchFailedResult(BaseModel):
+    """匹配失败结果"""
+    document_id: str                 # 文档ID
+    total_failed: int                # 失败总数
+    items: List[CommentRef]          # 未匹配的评论列表

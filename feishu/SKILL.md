@@ -196,10 +196,10 @@ python scripts/run.py lark_cli.py authorize-file --file-token "<file_token>"
 | --------------- | ---- | -------------------------------------------- |
 | `--document-id` | 是   | 云文档 ID                                    |
 | `--file-type`   | 是   | 文档类型: doc / docx / sheet / file / slides |
-| `--output-path` | 是   | 输出文件路径                                 |
+| `--output-dir` | 是   | 输出文件目录                                 |
 
 获取所有评论块，保存到指定路径。
 
 ```bash
-python scripts/run.py comment_handle.py match --document-id "<document_id>" --file-type "docx" --output-path "/path/to/file.json"
+python scripts/run.py comment_handle.py match --document-id "<document_id>" --file-type "docx" --output-dir "/path/to/folder/"
 ```

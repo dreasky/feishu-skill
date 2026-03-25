@@ -5,7 +5,7 @@
     python scripts/run.py comment_handle.py match \
         --document-id "xxx" \
         --file-type "docx" \
-        --output-path "./matches.json"
+        --output-dir "./output"
 """
 
 import argparse
@@ -19,7 +19,7 @@ def cmd_match(args):
     # 获取块数据
     block_wrapper = DocBlockWrapper()
     blocks_result = block_wrapper.list_blocks(
-        document_id=args.document_id, save_path=f"{args.output_path}/blocks.json"
+        document_id=args.document_id, save_path=f"{args.output_dir}/blocks.json"
     )
 
     # 获取评论数据（非全文评论）
@@ -28,7 +28,7 @@ def cmd_match(args):
         file_token=args.document_id,
         file_type=args.file_type,
         is_whole=False,
-        save_path=f"{args.output_path}/comments.json",
+        save_path=f"{args.output_dir}/comments.json",
     )
 
     # 匹配并保存
@@ -37,7 +37,7 @@ def cmd_match(args):
         comments_result=comments_result,
         document_id=args.document_id,
     )
-    matcher.match_and_save(output_path=args.output_path)
+    matcher.match_and_save(output_dir=args.output_dir)
 
 
 def main():
@@ -52,7 +52,7 @@ def main():
         required=True,
         help="文档类型: doc / docx / sheet / file / slides",
     )
-    p.add_argument("--output-path", required=True, help="输出文件路径")
+    p.add_argument("--output-dir", required=True, help="输出目录")
 
     args = parser.parse_args()
 
