@@ -19,7 +19,7 @@ def cmd_match(args):
     # 获取块数据
     block_wrapper = DocBlockWrapper()
     blocks_result = block_wrapper.list_blocks(
-        document_id=args.document_id,
+        document_id=args.document_id, save_path=f"{args.output_path}/blocks.json"
     )
 
     # 获取评论数据（非全文评论）
@@ -28,6 +28,7 @@ def cmd_match(args):
         file_token=args.document_id,
         file_type=args.file_type,
         is_whole=False,
+        save_path=f"{args.output_path}/comments.json",
     )
 
     # 匹配并保存
