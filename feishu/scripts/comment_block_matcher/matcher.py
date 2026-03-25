@@ -98,7 +98,7 @@ class CommentBlockMatcher:
                         matched_block_ids.add(block_id)
 
                     normalized_content = normalize_text(content)
-                    if normalized_content in quote:
+                    if len(normalized_content) > 0 and normalized_content in quote:
                         # ⚠ 跨块的评论，由于飞书提供的引用文本存在截断，只能锚定首个块
                         matched_block_ids.add(block_id)
 
