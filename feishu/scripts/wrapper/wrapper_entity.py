@@ -171,6 +171,47 @@ class CommentItem(BaseModel):
 
 
 class ListCommentsResult(BaseModel):
+    file_token: str
+    total_comments: int
     items: List[CommentItem]
-    has_more: bool
-    page_token: Optional[str] = None
+
+
+# === 文档块相关实体 ===
+
+
+class TextElementStyle(BaseModel):
+    bold: Optional[bool] = None
+    italic: Optional[bool] = None
+    strikethrough: Optional[bool] = None
+    underline: Optional[bool] = None
+    inline_code: Optional[bool] = None
+
+
+class TextRun(BaseModel):
+    content: Optional[str] = None
+    text_element_style: Optional[TextElementStyle] = None
+
+
+class BlockElement(BaseModel):
+    text_run: Optional[TextRun] = None
+
+
+class BlockTextStyle(BaseModel):
+    align: Optional[int] = None
+    done: Optional[bool] = None
+    folded: Optional[bool] = None
+
+
+class BlockItem(BaseModel):
+    block_id: Optional[str] = None
+    parent_id: Optional[str] = None
+    block_type: Optional[int] = None
+    children: List[str] = []
+    elements: List[BlockElement] = []
+    text: Optional[BlockTextStyle] = None
+
+
+class ListBlocksResult(BaseModel):
+    document_id: str
+    total_blocks: int
+    items: List[BlockItem]

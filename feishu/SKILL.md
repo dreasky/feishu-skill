@@ -35,6 +35,7 @@ python scripts/run.py lark_cli.py <command> [options]
 | 云文档 | `get-import-task`       | 查询导入任务结果       |
 | 云文档 | `authorize-file`        | 授权文件权限           |
 | 云文档 | `list-comments`         | 获取云文档所有评论     |
+| 文档块 | `list-blocks`           | 获取文档所有块         |
 
 ---
 
@@ -200,12 +201,32 @@ python scripts/run.py lark_cli.py authorize-file --file-token "<file_token>"
 | ----------------- | ---- | --------------------------------------------------- |
 | `--file-token`    | 是   | 云文档 token                                        |
 | `--file-type`     | 是   | 文档类型（`doc` / `docx` / `sheet` / `file` / `slides`） |
+| `--save-path`     | 是   | 保存文件路径（JSON 格式）                           |
 | `--is-whole`      | 否   | 是否全文评论                                        |
-| `--is-solved`     | 否   |是否已解决                                           |
-| `--page-token`    | 否   | 分页标记                                            |
-| `--page-size`     | 否   | 分页大小（默认 50，最大 100）                       |
+| `--is-solved`     | 否   | 是否已解决                                          |
 | `--user-id-type`  | 否   | 用户 ID 类型（`open_id` / `union_id` / `user_id`）  |
 
+自动分页获取所有评论，保存到指定路径。
+
 ```bash
-python scripts/run.py lark_cli.py list-comments --file-token "<file_token>" --file-type "docx"
+python scripts/run.py lark_cli.py list-comments --file-token "<file_token>" --file-type "docx" --save-path "./output/comments.json"
+```
+
+---
+
+### 文档块
+
+#### `list-blocks` — 获取文档所有块
+
+| 参数                     | 必填 | 说明                                          |
+| ------------------------ | ---- | --------------------------------------------- |
+| `--document-id`          | 是   | 文档 ID                                       |
+| `--save-path`            | 是   | 保存文件路径（JSON 格式）                     |
+| `--document-revision-id` | 否   | 文档版本（`-1` 表示最新版本）                 |
+| `--user-id-type`         | 否   | 用户 ID 类型（`open_id` / `union_id` / `user_id`） |
+
+自动分页获取所有块，保存到指定路径。
+
+```bash
+python scripts/run.py lark_cli.py list-blocks --document-id "<document_id>" --save-path "./output/blocks.json"
 ```

@@ -110,10 +110,23 @@ def cmd_list_comments(args):
     wrapper.list_comments(
         file_token=args.file_token,
         file_type=args.file_type,
+        save_path=args.save_path,
         is_whole=args.is_whole,
         is_solved=args.is_solved,
-        page_token=args.page_token,
-        page_size=args.page_size,
+        user_id_type=args.user_id_type,
+    )
+
+
+# === 文档块 API ===
+
+
+def cmd_list_blocks(args):
+    """获取文档所有块（自动分页）"""
+    wrapper = DocBlockWrapper()
+    wrapper.list_blocks(
+        document_id=args.document_id,
+        save_path=args.save_path,
+        document_revision_id=args.document_revision_id,
         user_id_type=args.user_id_type,
     )
 
@@ -170,10 +183,16 @@ def main():
     p = subparsers.add_parser("list-comments", help="获取云文档所有评论")
     p.add_argument("--file-token", required=True, help="云文档token")
     p.add_argument("--file-type", required=True, help="文档类型: doc / docx / sheet / file / slides")
+    p.add_argument("--save-path", required=True, help="保存文件路径")
     p.add_argument("--is-whole", action="store_true", default=None, help="是否全文评论")
     p.add_argument("--is-solved", action="store_true", default=None, help="是否已解决")
-    p.add_argument("--page-token", default=None, help="分页标记")
-    p.add_argument("--page-size", type=int, default=None, help="分页大小，默认50，最大100")
+    p.add_argument("--user-id-type", default=None, help="用户ID类型: open_id / union_id / user_id")
+
+    # === 文档块 API ===
+    p = subparsers.add_parser("list-blocks", help="获取文档所有块（自动分页）")
+    p.add_argument("--document-id", required=True, help="文档ID")
+    p.add_argument("--save-path", required=True, help="保存文件路径")
+    p.add_argument("--document-revision-id", type=int, default=None, help="文档版本，-1表示最新")
     p.add_argument("--user-id-type", default=None, help="用户ID类型: open_id / union_id / user_id")
 
     args = parser.parse_args()
@@ -195,6 +214,7 @@ def main():
         "get-import-task": cmd_get_import_task,
         "authorize-file": cmd_batch_create_permission_member_custom,
         "list-comments": cmd_list_comments,
+        "list-blocks": cmd_list_blocks,
     }
 
     try:
