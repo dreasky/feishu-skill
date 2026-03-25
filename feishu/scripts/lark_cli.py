@@ -104,6 +104,20 @@ def cmd_batch_create_permission_member_custom(args):
     wrapper.batch_create_permission_member_custom(args.file_token)
 
 
+def cmd_list_comments(args):
+    """获取云文档所有评论"""
+    wrapper = CloudSpaceWrapper()
+    wrapper.list_comments(
+        file_token=args.file_token,
+        file_type=args.file_type,
+        is_whole=args.is_whole,
+        is_solved=args.is_solved,
+        page_token=args.page_token,
+        page_size=args.page_size,
+        user_id_type=args.user_id_type,
+    )
+
+
 def main():
     parser = argparse.ArgumentParser(description="feishu CLI - 飞书命令行工具")
     subparsers = parser.add_subparsers(dest="command", help="可用命令")
@@ -153,6 +167,15 @@ def main():
     p = subparsers.add_parser("authorize-file", help="授权文件权限(全量,群组)")
     p.add_argument("--file-token", required=True, help="文件token")
 
+    p = subparsers.add_parser("list-comments", help="获取云文档所有评论")
+    p.add_argument("--file-token", required=True, help="云文档token")
+    p.add_argument("--file-type", required=True, help="文档类型: doc / docx / sheet / file / slides")
+    p.add_argument("--is-whole", action="store_true", default=None, help="是否全文评论")
+    p.add_argument("--is-solved", action="store_true", default=None, help="是否已解决")
+    p.add_argument("--page-token", default=None, help="分页标记")
+    p.add_argument("--page-size", type=int, default=None, help="分页大小，默认50，最大100")
+    p.add_argument("--user-id-type", default=None, help="用户ID类型: open_id / union_id / user_id")
+
     args = parser.parse_args()
 
     if not args.command:
@@ -171,6 +194,7 @@ def main():
         "upload-file": cmd_upload_file,
         "get-import-task": cmd_get_import_task,
         "authorize-file": cmd_batch_create_permission_member_custom,
+        "list-comments": cmd_list_comments,
     }
 
     try:

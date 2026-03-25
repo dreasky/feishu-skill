@@ -110,3 +110,67 @@ class GetBotInfoResult(BaseModel):
     avatar_url: str
     activate_status: int
     ip_white_list: List[str]
+
+
+# === 评论相关实体 ===
+
+
+class ReplyTextRun(BaseModel):
+    text: Optional[str] = None
+
+
+class ReplyDocsLink(BaseModel):
+    url: Optional[str] = None
+
+
+class ReplyPerson(BaseModel):
+    user_id: Optional[str] = None
+
+
+class ReplyElement(BaseModel):
+    type: Optional[str] = None
+    text_run: Optional[ReplyTextRun] = None
+    docs_link: Optional[ReplyDocsLink] = None
+    person: Optional[ReplyPerson] = None
+
+
+class ReplyContent(BaseModel):
+    elements: List[ReplyElement] = []
+
+
+class ReplyExtra(BaseModel):
+    image_list: List[str] = []
+
+
+class ReplyItem(BaseModel):
+    reply_id: Optional[str] = None
+    user_id: Optional[str] = None
+    create_time: Optional[int] = None
+    update_time: Optional[int] = None
+    content: Optional[ReplyContent] = None
+    extra: Optional[ReplyExtra] = None
+
+
+class ReplyList(BaseModel):
+    replies: List[ReplyItem] = []
+
+
+class CommentItem(BaseModel):
+    comment_id: Optional[str] = None
+    user_id: Optional[str] = None
+    create_time: Optional[int] = None
+    update_time: Optional[int] = None
+    is_solved: Optional[bool] = None
+    solved_time: Optional[int] = None
+    solver_user_id: Optional[str] = None
+    is_whole: Optional[bool] = None
+    quote: Optional[str] = None
+    reply_list: Optional[ReplyList] = None
+    has_more: Optional[bool] = None
+    page_token: Optional[str] = None
+
+
+class ListCommentsResult(BaseModel):
+    items: List[CommentItem]
+    has_more: bool
+    page_token: Optional[str] = None

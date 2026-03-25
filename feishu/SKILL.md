@@ -34,6 +34,7 @@ python scripts/run.py lark_cli.py <command> [options]
 | 云文档 | `upload-file`           | 上传任意文件           |
 | 云文档 | `get-import-task`       | 查询导入任务结果       |
 | 云文档 | `authorize-file`        | 授权文件权限           |
+| 云文档 | `list-comments`         | 获取云文档所有评论     |
 
 ---
 
@@ -189,4 +190,22 @@ python scripts/run.py lark_cli.py get-import-task --ticket "<ticket>"
 
 ```bash
 python scripts/run.py lark_cli.py authorize-file --file-token "<file_token>"
+```
+
+---
+
+#### `list-comments` — 获取云文档所有评论
+
+| 参数              | 必填 | 说明                                                |
+| ----------------- | ---- | --------------------------------------------------- |
+| `--file-token`    | 是   | 云文档 token                                        |
+| `--file-type`     | 是   | 文档类型（`doc` / `docx` / `sheet` / `file` / `slides`） |
+| `--is-whole`      | 否   | 是否全文评论                                        |
+| `--is-solved`     | 否   |是否已解决                                           |
+| `--page-token`    | 否   | 分页标记                                            |
+| `--page-size`     | 否   | 分页大小（默认 50，最大 100）                       |
+| `--user-id-type`  | 否   | 用户 ID 类型（`open_id` / `union_id` / `user_id`）  |
+
+```bash
+python scripts/run.py lark_cli.py list-comments --file-token "<file_token>" --file-type "docx"
 ```

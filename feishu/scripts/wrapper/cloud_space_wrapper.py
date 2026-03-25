@@ -276,3 +276,112 @@ class CloudSpaceWrapper(BaseWrapper):
         )
         print(f"✅ get_import_task success", result.model_dump_json(indent=2))
         return result
+
+    def list_comments(
+        self,
+        file_token: str,
+        file_type: str,
+        is_whole: Optional[bool] = None,
+        is_solved: Optional[bool] = None,
+        page_token: Optional[str] = None,
+        page_size: Optional[int] = None,
+        user_id_type: Optional[str] = None,
+    ) -> ListCommentsResult:
+        """
+        获取云文档所有评论
+        https://open.feishu.cn/document/server-docs/docs/CommentAPI/list
+        """
+        builder = ListFileCommentRequest.builder().file_token(file_token).file_type(file_type)
+
+        if is_whole is not None:
+            builder = builder.is_whole(is_whole)
+        if is_solved is not None:
+            builder = builder.is_solved(is_solved)
+        if page_token:
+            builder = builder.page_token(page_token)
+        if page_size:
+            builder = builder.page_size(page_size)
+        if user_id_type:
+            builder = builder.user_id_type(user_id_type)
+
+        request: ListFileCommentRequest = builder.build()
+        response: ListFileCommentResponse = self._client.drive.v1.file_comment.list(request)
+
+        if not response.success():
+            resp_data = (
+                json.loads(response.raw.content)
+                if response.raw and response.raw.content
+                else {}
+            )
+            raise WrapperError(
+                method="list_comments",
+                code=response.code,
+                msg=response.msg,
+                log_id=response.get_log_id(),
+                resp=resp_data,
+            )
+
+        if response.data is None:
+            raise WrapperError(method="list_comments", detail="response.data is null")
+
+        # 解析评论列表
+        items = []
+        for comment in response.data.items or []:
+            reply_list = None
+            if comment.reply_list:
+                replies = []
+                for reply in comment.reply_list.replies or []:
+                    content = None
+                    if reply.content:
+                        elements = []
+                        for elem in reply.content.elements or []:
+                            elements.append(
+                                ReplyElement(
+                                    type=elem.type,
+                                    text_run=ReplyTextRun(text=elem.text_run.text) if elem.text_run else None,
+                                    docs_link=ReplyDocsLink(url=elem.docs_link.url) if elem.docs_link else None,
+                                    person=ReplyPerson(user_id=elem.person.user_id) if elem.person else None,
+                                )
+                            )
+                        content = ReplyContent(elements=elements)
+
+                    extra = None
+                    if reply.extra:
+                        extra = ReplyExtra(image_list=list(reply.extra.image_list or []))
+
+                    replies.append(
+                        ReplyItem(
+                            reply_id=reply.reply_id,
+                            user_id=reply.user_id,
+                            create_time=reply.create_time,
+                            update_time=reply.update_time,
+                            content=content,
+                            extra=extra,
+                        )
+                    )
+                reply_list = ReplyList(replies=replies)
+
+            items.append(
+                CommentItem(
+                    comment_id=comment.comment_id,
+                    user_id=comment.user_id,
+                    create_time=comment.create_time,
+                    update_time=comment.update_time,
+                    is_solved=comment.is_solved,
+                    solved_time=comment.solved_time,
+                    solver_user_id=comment.solver_user_id,
+                    is_whole=comment.is_whole,
+                    quote=comment.quote,
+                    reply_list=reply_list,
+                    has_more=comment.has_more,
+                    page_token=comment.page_token,
+                )
+            )
+
+        result = ListCommentsResult(
+            items=items,
+            has_more=response.data.has_more or False,
+            page_token=response.data.page_token,
+        )
+        print(f"✅ list_comments success", result.model_dump_json(indent=2))
+        return result
