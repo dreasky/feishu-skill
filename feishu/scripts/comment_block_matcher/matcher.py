@@ -17,9 +17,9 @@ def normalize_text(text: str) -> str:
     """标准化文本，去除首尾空白和标点符号"""
     text = text.strip()
     # 去除末尾常见标点
-    while text and text[-1] in "。！？，、；：""''）】》":
+    while text and text[-1] in "。！？，、；：" "''）】》":
         text = text[:-1].strip()
-    while text and text[0] in "（【《""''":
+    while text and text[0] in "（【《" "''":
         text = text[1:].strip()
     return text
 
@@ -97,7 +97,8 @@ class CommentBlockMatcher:
                     if quote in content:
                         matched_block_ids.add(block_id)
 
-                    if content in quote:
+                    normalized_content = normalize_text(content)
+                    if normalized_content in quote:
                         # ⚠ 跨块的评论，由于飞书提供的引用文本存在截断，只能锚定首个块
                         matched_block_ids.add(block_id)
 
@@ -163,7 +164,9 @@ class CommentBlockMatcher:
 
         # 保存失败结果
         failed_file = save_dir / "match_failed.json"
-        failed_file.write_text(failed_result.model_dump_json(indent=2), encoding="utf-8")
+        failed_file.write_text(
+            failed_result.model_dump_json(indent=2), encoding="utf-8"
+        )
 
         print(f"✅ match success")
         print(f"   total_blocks: {match_result.total_blocks}")
