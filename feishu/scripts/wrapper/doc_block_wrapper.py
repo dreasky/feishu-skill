@@ -13,7 +13,7 @@ class DocBlockWrapper(BaseWrapper):
     def list_blocks(
         self,
         document_id: str,
-        save_path: str,
+        save_path: Optional[str] = None,
         document_revision_id: Optional[int] = None,
         user_id_type: Optional[str] = None,
     ) -> ListBlocksResult:
@@ -29,7 +29,11 @@ class DocBlockWrapper(BaseWrapper):
             page_count += 1
 
             # 构建请求
-            builder = ListDocumentBlockRequest.builder().document_id(document_id).page_size(500)
+            builder = (
+                ListDocumentBlockRequest.builder()
+                .document_id(document_id)
+                .page_size(500)
+            )
             if page_token:
                 builder = builder.page_token(page_token)
             if document_revision_id is not None:
@@ -38,7 +42,9 @@ class DocBlockWrapper(BaseWrapper):
                 builder = builder.user_id_type(user_id_type)
 
             request: ListDocumentBlockRequest = builder.build()
-            response: ListDocumentBlockResponse = self._client.docx.v1.document_block.list(request)
+            response: ListDocumentBlockResponse = (
+                self._client.docx.v1.document_block.list(request)
+            )
 
             if not response.success():
                 resp_data = (
@@ -98,7 +104,9 @@ class DocBlockWrapper(BaseWrapper):
                     )
                 )
 
-            print(f"📄 Page {page_count}: {len(response.data.items or [])} blocks, total: {len(all_items)}")
+            print(
+                f"📄 Page {page_count}: {len(response.data.items or [])} blocks, total: {len(all_items)}"
+            )
 
             # 通过 has_more 和 page_token 判断是否有更多分页
             if not response.data.has_more:
@@ -107,16 +115,17 @@ class DocBlockWrapper(BaseWrapper):
             if not page_token:
                 break
 
-        # 保存到文件
         result = ListBlocksResult(
             document_id=document_id,
             total_blocks=len(all_items),
             items=all_items,
         )
+        # 保存到文件
+        if save_path:
+            save_file = Path(save_path)
+            save_file.parent.mkdir(parents=True, exist_ok=True)
+            save_file.write_text(result.model_dump_json(indent=2), encoding="utf-8")
+            print(f"✅ list_blocks saved to: {save_path}")
 
-        save_file = Path(save_path)
-        save_file.parent.mkdir(parents=True, exist_ok=True)
-        save_file.write_text(result.model_dump_json(indent=2), encoding="utf-8")
-
-        print(f"✅ list_blocks success, total: {len(all_items)} blocks, saved to: {save_path}")
+        print(f"✅ list_blocks success, total: {len(all_items)} blocks")
         return result

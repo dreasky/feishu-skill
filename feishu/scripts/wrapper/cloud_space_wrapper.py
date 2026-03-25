@@ -281,7 +281,7 @@ class CloudSpaceWrapper(BaseWrapper):
         self,
         file_token: str,
         file_type: str,
-        save_path: str,
+        save_path: Optional[str] = None,
         is_whole: Optional[bool] = None,
         is_solved: Optional[bool] = None,
         user_id_type: Optional[str] = None,
@@ -297,7 +297,12 @@ class CloudSpaceWrapper(BaseWrapper):
         while True:
             page_count += 1
 
-            builder = ListFileCommentRequest.builder().file_token(file_token).file_type(file_type).page_size(50)
+            builder = (
+                ListFileCommentRequest.builder()
+                .file_token(file_token)
+                .file_type(file_type)
+                .page_size(50)
+            )
 
             if is_whole is not None:
                 builder = builder.is_whole(is_whole)
@@ -309,7 +314,9 @@ class CloudSpaceWrapper(BaseWrapper):
                 builder = builder.user_id_type(user_id_type)
 
             request: ListFileCommentRequest = builder.build()
-            response: ListFileCommentResponse = self._client.drive.v1.file_comment.list(request)
+            response: ListFileCommentResponse = self._client.drive.v1.file_comment.list(
+                request
+            )
 
             if not response.success():
                 resp_data = (
@@ -326,7 +333,9 @@ class CloudSpaceWrapper(BaseWrapper):
                 )
 
             if response.data is None:
-                raise WrapperError(method="list_comments", detail="response.data is null")
+                raise WrapperError(
+                    method="list_comments", detail="response.data is null"
+                )
 
             # 解析评论列表
             for comment in response.data.items or []:
@@ -341,16 +350,30 @@ class CloudSpaceWrapper(BaseWrapper):
                                 elements.append(
                                     ReplyElement(
                                         type=elem.type,
-                                        text_run=ReplyTextRun(text=elem.text_run.text) if elem.text_run else None,
-                                        docs_link=ReplyDocsLink(url=elem.docs_link.url) if elem.docs_link else None,
-                                        person=ReplyPerson(user_id=elem.person.user_id) if elem.person else None,
+                                        text_run=(
+                                            ReplyTextRun(text=elem.text_run.text)
+                                            if elem.text_run
+                                            else None
+                                        ),
+                                        docs_link=(
+                                            ReplyDocsLink(url=elem.docs_link.url)
+                                            if elem.docs_link
+                                            else None
+                                        ),
+                                        person=(
+                                            ReplyPerson(user_id=elem.person.user_id)
+                                            if elem.person
+                                            else None
+                                        ),
                                     )
                                 )
                             content = ReplyContent(elements=elements)
 
                         extra = None
                         if reply.extra:
-                            extra = ReplyExtra(image_list=list(reply.extra.image_list or []))
+                            extra = ReplyExtra(
+                                image_list=list(reply.extra.image_list or [])
+                            )
 
                         replies.append(
                             ReplyItem(
@@ -376,12 +399,12 @@ class CloudSpaceWrapper(BaseWrapper):
                         is_whole=comment.is_whole,
                         quote=comment.quote,
                         reply_list=reply_list,
-                        has_more=comment.has_more,
-                        page_token=comment.page_token,
                     )
                 )
 
-            print(f"📄 Page {page_count}: {len(response.data.items or [])} comments, total: {len(all_items)}")
+            print(
+                f"📄 Page {page_count}: {len(response.data.items or [])} comments, total: {len(all_items)}"
+            )
 
             # 通过 has_more 和 page_token 判断是否有更多分页
             if not response.data.has_more:
@@ -390,16 +413,17 @@ class CloudSpaceWrapper(BaseWrapper):
             if not page_token:
                 break
 
-        # 保存到文件
         result = ListCommentsResult(
             file_token=file_token,
             total_comments=len(all_items),
             items=all_items,
         )
+        # 保存到文件
+        if save_path:
+            save_file = Path(save_path)
+            save_file.parent.mkdir(parents=True, exist_ok=True)
+            save_file.write_text(result.model_dump_json(indent=2), encoding="utf-8")
+            print(f"✅ list_comments saved to: {save_path}")
 
-        save_file = Path(save_path)
-        save_file.parent.mkdir(parents=True, exist_ok=True)
-        save_file.write_text(result.model_dump_json(indent=2), encoding="utf-8")
-
-        print(f"✅ list_comments success, total: {len(all_items)} comments, saved to: {save_path}")
+        print(f"✅ list_comments success, total: {len(all_items)} comments")
         return result

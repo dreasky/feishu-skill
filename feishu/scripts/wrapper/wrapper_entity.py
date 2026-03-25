@@ -166,8 +166,6 @@ class CommentItem(BaseModel):
     is_whole: Optional[bool] = None
     quote: Optional[str] = None
     reply_list: Optional[ReplyList] = None
-    has_more: Optional[bool] = None
-    page_token: Optional[str] = None
 
 
 class ListCommentsResult(BaseModel):
