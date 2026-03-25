@@ -1,5 +1,5 @@
-from typing import List, Optional
-from pydantic import BaseModel
+from typing import List, Literal, Optional, Union, Annotated
+from pydantic import BaseModel, Field
 
 
 class SendMessageResult(BaseModel):
@@ -44,6 +44,7 @@ class UploadMediaResult(BaseModel):
 class UploadFileResult(BaseModel):
     file_token: str
     file_name: str
+
 
 class ImportTaskTicket(BaseModel):
     ticket: str
@@ -175,41 +176,92 @@ class ListCommentsResult(BaseModel):
 
 
 # === 文档块相关实体 ===
-
-
-class TextElementStyle(BaseModel):
-    bold: Optional[bool] = None
-    italic: Optional[bool] = None
-    strikethrough: Optional[bool] = None
-    underline: Optional[bool] = None
-    inline_code: Optional[bool] = None
-
-
-class TextRun(BaseModel):
-    content: Optional[str] = None
-    text_element_style: Optional[TextElementStyle] = None
-
-
-class BlockElement(BaseModel):
-    text_run: Optional[TextRun] = None
-
-
-class BlockTextStyle(BaseModel):
-    align: Optional[int] = None
-    done: Optional[bool] = None
-    folded: Optional[bool] = None
-
-
+# 1. 基础类
 class BlockItem(BaseModel):
     block_id: Optional[str] = None
     parent_id: Optional[str] = None
-    block_type: Optional[int] = None
-    children: List[str] = []
-    elements: List[BlockElement] = []
-    text: Optional[BlockTextStyle] = None
+
+
+# 2. 文本块 (Type 2)
+class TextBlockItem(BlockItem):
+    block_type: Literal[2] = 2
+    elements: List[str] = []
+
+
+# 3. 标题块 (Type 3-11)
+class Heading1BlockItem(BlockItem):
+    block_type: Literal[3] = 3
+    elements: List[str] = []
+
+
+class Heading2BlockItem(BlockItem):
+    block_type: Literal[4] = 4
+    elements: List[str] = []
+
+
+class Heading3BlockItem(BlockItem):
+    block_type: Literal[5] = 5
+    elements: List[str] = []
+
+
+class Heading4BlockItem(BlockItem):
+    block_type: Literal[6] = 6
+    elements: List[str] = []
+
+
+class Heading5BlockItem(BlockItem):
+    block_type: Literal[7] = 7
+    elements: List[str] = []
+
+
+class Heading6BlockItem(BlockItem):
+    block_type: Literal[8] = 8
+    elements: List[str] = []
+
+
+class Heading7BlockItem(BlockItem):
+    block_type: Literal[9] = 9
+    elements: List[str] = []
+
+
+class Heading8BlockItem(BlockItem):
+    block_type: Literal[10] = 10
+    elements: List[str] = []
+
+
+class Heading9BlockItem(BlockItem):
+    block_type: Literal[11] = 11
+    elements: List[str] = []
+
+
+# 4. 图片块 (Type 27)
+class ImageBlockItem(BlockItem):
+    block_type: Literal[27] = 27
+    width: Optional[int] = None
+    height: Optional[int] = None
+    token: Optional[str] = None
+    caption: Optional[str] = None
+
+
+BlockUnion = Annotated[
+    Union[
+        TextBlockItem,
+        Heading1BlockItem,
+        Heading2BlockItem,
+        Heading3BlockItem,
+        Heading4BlockItem,
+        Heading5BlockItem,
+        Heading6BlockItem,
+        Heading7BlockItem,
+        Heading8BlockItem,
+        Heading9BlockItem,
+        ImageBlockItem,
+    ],
+    Field(discriminator="block_type"),
+]
 
 
 class ListBlocksResult(BaseModel):
     document_id: str
     total_blocks: int
-    items: List[BlockItem]
+    items: List[BlockUnion]

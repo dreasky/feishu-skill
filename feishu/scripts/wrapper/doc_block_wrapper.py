@@ -1,14 +1,109 @@
 import json
 from pathlib import Path
-from typing import Optional, List
+from typing import List, Optional, Union
 from lark_oapi.api.docx.v1 import *
-from .wrapper_entity import *
+from .wrapper_entity import (
+    ListBlocksResult,
+    BlockUnion,
+    TextBlockItem,
+    Heading1BlockItem,
+    Heading2BlockItem,
+    Heading3BlockItem,
+    Heading4BlockItem,
+    Heading5BlockItem,
+    Heading6BlockItem,
+    Heading7BlockItem,
+    Heading8BlockItem,
+    Heading9BlockItem,
+    ImageBlockItem,
+)
 from .base_wrapper import BaseWrapper
 from .wrapper_error import WrapperError
 
 
+# Block 类型常量
+BLOCK_TYPE_TEXT = 2
+BLOCK_TYPE_HEADING = [3, 4, 5, 6, 7, 8, 9, 10, 11]  # 标题1-9
+BLOCK_TYPE_IMAGE = 27
+
+# 标题类映射
+HEADING_CLASSES = {
+    3: Heading1BlockItem,
+    4: Heading2BlockItem,
+    5: Heading3BlockItem,
+    6: Heading4BlockItem,
+    7: Heading5BlockItem,
+    8: Heading6BlockItem,
+    9: Heading7BlockItem,
+    10: Heading8BlockItem,
+    11: Heading9BlockItem,
+}
+
+
 class DocBlockWrapper(BaseWrapper):
     """飞书云文档 > 文档 > 块 API 封装类"""
+
+    def _get_heading_attr(self, block_type: int) -> str:
+        """获取标题属性名"""
+        return f"heading{block_type - 2}"
+
+    def _extract_text_elements(self, elements_obj) -> List[str]:
+        """提取文本元素为字符串列表"""
+        if not elements_obj:
+            return []
+        return [
+            elem.text_run.content
+            for elem in elements_obj
+            if elem.text_run and elem.text_run.content
+        ]
+
+    def _create_text_block(self, block) -> TextBlockItem:
+        """创建文本块"""
+        elements = self._extract_text_elements(block.text.elements)
+        return TextBlockItem(
+            block_id=block.block_id,
+            parent_id=block.parent_id,
+            elements=elements,
+        )
+
+    def _create_heading_block(self, block, block_type: int) -> Union[
+        Heading1BlockItem,
+        Heading2BlockItem,
+        Heading3BlockItem,
+        Heading4BlockItem,
+        Heading5BlockItem,
+        Heading6BlockItem,
+        Heading7BlockItem,
+        Heading8BlockItem,
+        Heading9BlockItem,
+    ]:
+        """创建标题块"""
+        heading_attr = self._get_heading_attr(block_type)
+        heading_obj = getattr(block, heading_attr, None)
+        elements = self._extract_text_elements(
+            heading_obj.elements if heading_obj else None
+        )
+
+        heading_class = HEADING_CLASSES[block_type]
+        return heading_class(
+            block_id=block.block_id,
+            parent_id=block.parent_id,
+            elements=elements,
+        )
+
+    def _create_image_block(self, block) -> ImageBlockItem:
+        """创建图片块"""
+        caption = None
+        if block.image.caption and block.image.caption.content:
+            caption = block.image.caption.content
+        return ImageBlockItem(
+            block_id=block.block_id,
+            parent_id=block.parent_id,
+            width=block.image.width,
+            height=block.image.height,
+            token=block.image.token,
+            caption=caption,
+        )
 
     def list_blocks(
         self,
@@ -21,7 +116,7 @@ class DocBlockWrapper(BaseWrapper):
         获取文档所有块（自动分页）并保存到文件
         https://open.feishu.cn/document/ukTMukTMukTM/uUDN04SN0QjL1QDN/document-docx/docx-v1/document-block/list
         """
-        all_items: List[BlockItem] = []
+        all_items: List[BlockUnion] = []
         page_token = None
         page_count = 0
 
@@ -65,44 +160,16 @@ class DocBlockWrapper(BaseWrapper):
 
             # 解析块列表
             for block in response.data.items or []:
-                elements = []
-                if block.text and block.text.elements:
-                    for elem in block.text.elements:
-                        text_run = None
-                        if elem.text_run:
-                            style = None
-                            if elem.text_run.text_element_style:
-                                style = TextElementStyle(
-                                    bold=elem.text_run.text_element_style.bold,
-                                    italic=elem.text_run.text_element_style.italic,
-                                    strikethrough=elem.text_run.text_element_style.strikethrough,
-                                    underline=elem.text_run.text_element_style.underline,
-                                    inline_code=elem.text_run.text_element_style.inline_code,
-                                )
-                            text_run = TextRun(
-                                content=elem.text_run.content,
-                                text_element_style=style,
-                            )
-                        elements.append(BlockElement(text_run=text_run))
+                block_type = block.block_type
 
-                text_style = None
-                if block.text and block.text.style:
-                    text_style = BlockTextStyle(
-                        align=block.text.style.align,
-                        done=block.text.style.done,
-                        folded=block.text.style.folded,
-                    )
+                if block_type == BLOCK_TYPE_TEXT:
+                    all_items.append(self._create_text_block(block))
 
-                all_items.append(
-                    BlockItem(
-                        block_id=block.block_id,
-                        parent_id=block.parent_id,
-                        block_type=block.block_type,
-                        children=list(block.children or []),
-                        elements=elements,
-                        text=text_style,
-                    )
-                )
+                elif block_type in BLOCK_TYPE_HEADING:
+                    all_items.append(self._create_heading_block(block, block_type))
+
+                elif block_type == BLOCK_TYPE_IMAGE:
+                    all_items.append(self._create_image_block(block))
 
             print(
                 f"📄 Page {page_count}: {len(response.data.items or [])} blocks, total: {len(all_items)}"
@@ -120,6 +187,7 @@ class DocBlockWrapper(BaseWrapper):
             total_blocks=len(all_items),
             items=all_items,
         )
+
         # 保存到文件
         if save_path:
             save_file = Path(save_path)
