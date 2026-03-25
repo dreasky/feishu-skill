@@ -8,7 +8,7 @@ import subprocess
 import sys
 import tempfile
 from pathlib import Path
-from typing import Optional, Literal
+from typing import Optional, Literal, Tuple
 
 # 支持的权限模式
 PermissionMode = Literal[
@@ -27,7 +27,8 @@ class ClaudeLauncher:
             workdir: 工作目录，默认当前目录
         """
         self._workdir = Path(workdir) if workdir else Path.cwd()
-        self._claude_path: Optional[str] = None
+        self._claude_cli_path: Optional[str] = None
+        self._node_path: Optional[str] = None
 
     @property
     def workdir(self) -> Path:
@@ -37,25 +38,36 @@ class ClaudeLauncher:
     def workdir(self, value: str) -> None:
         self._workdir = Path(value)
 
-    @property
-    def claude_path(self) -> str:
-        """获取 Claude CLI 路径（延迟查找）"""
-        if self._claude_path is None:
-            self._claude_path = self._find_claude_path()
-        return self._claude_path
+    def _find_claude_paths(self) -> Tuple[str, str]:
+        """
+        查找 node 和 Claude CLI 的路径
 
-    def _find_claude_path(self) -> str:
-        """查找 Claude CLI 路径"""
+        Returns:
+            (node_path, cli_js_path)
+        """
         if sys.platform == "win32":
+            # 查找 claude.cmd 的位置
             result = subprocess.run(
-                ["where", "claude"], capture_output=True, text=True, shell=True
+                ["where", "claude.cmd"], capture_output=True, text=True, shell=True
             )
-        else:
-            result = subprocess.run(["which", "claude"], capture_output=True, text=True)
+            if result.returncode == 0:
+                claude_cmd_path = result.stdout.strip().split("\n")[0]
+                claude_dir = Path(claude_cmd_path).parent
 
-        if result.returncode == 0:
-            return result.stdout.strip().split("\n")[0]
-        return "claude"
+                # 确定 node 路径
+                node_exe = claude_dir / "node.exe"
+                if node_exe.exists():
+                    node_path = str(node_exe)
+                else:
+                    node_path = "node"
+
+                # cli.js 路径
+                cli_js = claude_dir / "node_modules" / "@anthropic-ai" / "claude-code" / "cli.js"
+                if cli_js.exists():
+                    return node_path, str(cli_js)
+
+        # 回退：使用系统 node 和 claude 命令
+        return "node", "claude"
 
     def _get_linux_terminal(self) -> list:
         """检测可用的 Linux 终端模拟器"""
@@ -83,24 +95,34 @@ class ClaudeLauncher:
         """创建临时启动脚本，返回脚本路径"""
         workdir = self._workdir.resolve()
 
-        # 构建 claude 命令
-        claude_cmd = (
-            f'"{self.claude_path}"' if sys.platform == "win32" else self.claude_path
-        )
-        if model:
-            claude_cmd += f" --model {model}"
-        if permission_mode:
-            claude_cmd += f" --permission-mode {permission_mode}"
-        if prompt:
-            escaped_prompt = prompt.replace(
-                '"', '""' if sys.platform == "win32" else '\\"'
-            )
-            claude_cmd += f' "{escaped_prompt}"'
+        # 获取 node 和 cli.js 路径
+        node_path, cli_path = self._find_claude_paths()
 
         if sys.platform == "win32":
-            content = f'@echo off\ncd /d "{workdir}"\n{claude_cmd}\n'
-            suffix = ".bat"
+            # PowerShell 脚本 - 直接用 node 执行 cli.js
+            args = [f"'{cli_path}'"]
+            if model:
+                args.append(f"--model {model}")
+            if permission_mode:
+                args.append(f"--permission-mode {permission_mode}")
+            if prompt:
+                escaped_prompt = prompt.replace("'", "''")
+                args.append(f"'{escaped_prompt}'")
+
+            args_str = " " + " ".join(args)
+            content = f"Set-Location '{workdir}'\n& '{node_path}' {args_str}\n"
+            suffix = ".ps1"
         else:
+            # Bash 脚本
+            claude_cmd = "claude"
+            if model:
+                claude_cmd += f" --model {model}"
+            if permission_mode:
+                claude_cmd += f" --permission-mode {permission_mode}"
+            if prompt:
+                escaped_prompt = prompt.replace('"', '\\"')
+                claude_cmd += f' "{escaped_prompt}"'
+
             content = f'#!/bin/bash\ncd "{workdir}"\n{claude_cmd}\nexec bash\n'
             suffix = ".sh"
 
@@ -153,9 +175,15 @@ class ClaudeLauncher:
         script_path = self._create_temp_script(prompt, model, permission_mode)
 
         if sys.platform == "win32":
-            subprocess.run(
-                f'start "Claude Code - {self._workdir.name}" cmd /k "{script_path}"',
-                shell=True,
+            # 直接启动新的 PowerShell 窗口执行脚本
+            subprocess.Popen(
+                [
+                    "powershell",
+                    "-NoExit",
+                    "-ExecutionPolicy", "Bypass",
+                    "-File", script_path,
+                ],
+                creationflags=subprocess.CREATE_NEW_CONSOLE,
             )
         else:
             terminal_cmd = self._get_linux_terminal()
@@ -170,7 +198,13 @@ class ClaudeLauncher:
         permission_mode: Optional[PermissionMode] = "acceptEdits",
     ) -> bool:
         """在当前窗口启动"""
-        cmd = [self.claude_path]
+        node_path, cli_path = self._find_claude_paths()
+
+        if sys.platform == "win32" and cli_path.endswith(".js"):
+            cmd = [node_path, cli_path]
+        else:
+            cmd = ["claude"]
+
         if model:
             cmd.extend(["--model", model])
         if permission_mode:

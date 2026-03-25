@@ -81,7 +81,7 @@ launcher.launch(prompt="say hello", new_window=False)
 
 ### 跨平台支持
 
-* **Windows**: 使用 `start` 命令打开新 cmd 窗口
+* **Windows**: 使用 PowerShell 打开新窗口
 * **Linux**: 自动检测终端模拟器（gnome-terminal、konsole、xfce4-terminal、mate-terminal、xterm）
 
 ---
