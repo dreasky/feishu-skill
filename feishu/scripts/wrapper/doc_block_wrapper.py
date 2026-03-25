@@ -100,7 +100,9 @@ class DocBlockWrapper(BaseWrapper):
 
             print(f"📄 Page {page_count}: {len(response.data.items or [])} blocks, total: {len(all_items)}")
 
-            # 通过 page_token 判断是否有更多分页
+            # 通过 has_more 和 page_token 判断是否有更多分页
+            if not response.data.has_more:
+                break
             page_token = response.data.page_token
             if not page_token:
                 break
