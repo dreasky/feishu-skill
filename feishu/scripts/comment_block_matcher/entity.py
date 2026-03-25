@@ -19,7 +19,6 @@ class BlockMatch(BaseModel):
 class MatchResult(BaseModel):
     """匹配结果"""
     document_id: str                 # 文档ID
-    match_mode: str                  # "strict" 或 "loose"
     total_blocks: int                # 匹配的块总数
     total_comments: int              # 评论总数
     matches: List[BlockMatch]        # 匹配结果列表

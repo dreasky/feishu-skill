@@ -1,7 +1,27 @@
 from pathlib import Path
 from typing import Dict, List
-from wrapper.wrapper_entity import ListBlocksResult, ListCommentsResult, BlockItem, CommentItem
+from wrapper.wrapper_entity import (
+    ListBlocksResult,
+    ListCommentsResult,
+    BlockItem,
+    CommentItem,
+)
 from .entity import CommentRef, BlockMatch, MatchResult
+
+
+# 长文本阈值，超过此长度使用模糊匹配
+LONG_TEXT_THRESHOLD = 50
+
+
+def normalize_text(text: str) -> str:
+    """标准化文本，去除首尾空白和标点符号"""
+    text = text.strip()
+    # 去除末尾常见标点
+    while text and text[-1] in "。！？，、；：" "''）】》":
+        text = text[:-1].strip()
+    while text and text[0] in "（【《" "''":
+        text = text[1:].strip()
+    return text
 
 
 class CommentBlockMatcher:
@@ -36,13 +56,8 @@ class CommentBlockMatcher:
                             replies.append(elem.text_run.text)
         return replies
 
-    def match(self, match_mode: str = "loose") -> MatchResult:
-        """
-        执行匹配
-
-        Args:
-            match_mode: 匹配模式 "strict" 或 "loose"
-        """
+    def match(self) -> MatchResult:
+        """执行匹配"""
         blocks = self.blocks_result.items
         comments = self.comments_result.items
 
@@ -71,21 +86,23 @@ class CommentBlockMatcher:
                 comments=replies,
             )
 
-            # 根据模式匹配
+            # 匹配逻辑
             matched_block_ids = set()
 
-            if match_mode == "strict":
-                # 严格模式：quote 必须完全匹配某个 element 的 content
-                for block_id, (block, content) in block_map.items():
-                    for elem in block.elements:
-                        if elem.text_run and elem.text_run.content == quote:
-                            matched_block_ids.add(block_id)
-                            break
-            else:
-                # 宽松模式：quote 包含在 block_content 中
+            if len(quote) >= LONG_TEXT_THRESHOLD:
+                # 长文本：模糊匹配，直接包含即可
                 for block_id, (block, content) in block_map.items():
                     if quote in content:
                         matched_block_ids.add(block_id)
+            else:
+                # 短文本：标准化后匹配
+                normalized_quote = normalize_text(quote)
+                for block_id, (block, content) in block_map.items():
+                    for elem in block.elements:
+                        if elem.text_run and elem.text_run.content:
+                            normalized_content = normalize_text(elem.text_run.content)
+                            if normalized_quote == normalized_content:
+                                matched_block_ids.add(block_id)
 
             # 将匹配结果加入 match_map
             for block_id in matched_block_ids:
@@ -104,21 +121,19 @@ class CommentBlockMatcher:
 
         return MatchResult(
             document_id=self.document_id,
-            match_mode=match_mode,
             total_blocks=len(matches),
             total_comments=total_comments,
             matches=matches,
         )
 
-    def match_and_save(self, output_path: str, match_mode: str = "loose") -> MatchResult:
+    def match_and_save(self, output_path: str) -> MatchResult:
         """
         执行匹配并保存到文件
 
         Args:
             output_path: 输出文件路径
-            match_mode: 匹配模式 "strict" 或 "loose"
         """
-        result = self.match(match_mode)
+        result = self.match()
 
         # 保存到文件
         save_file = Path(output_path)
@@ -126,7 +141,6 @@ class CommentBlockMatcher:
         save_file.write_text(result.model_dump_json(indent=2), encoding="utf-8")
 
         print(f"✅ match success")
-        print(f"   match_mode: {match_mode}")
         print(f"   total_blocks: {result.total_blocks}")
         print(f"   total_comments: {result.total_comments}")
         print(f"   saved to: {output_path}")

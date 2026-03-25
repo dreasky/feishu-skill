@@ -4,7 +4,6 @@
 用法:
     python scripts/run.py comment_handle.py match \
         --document-id "xxx" \
-        --file-token "xxx" \
         --file-type "docx" \
         --output-path "./matches.json"
 """
@@ -23,11 +22,12 @@ def cmd_match(args):
         document_id=args.document_id,
     )
 
-    # 获取评论数据
+    # 获取评论数据（非全文评论）
     comment_wrapper = CloudSpaceWrapper()
     comments_result = comment_wrapper.list_comments(
         file_token=args.document_id,
         file_type=args.file_type,
+        is_whole=False,
     )
 
     # 匹配并保存
@@ -36,10 +36,7 @@ def cmd_match(args):
         comments_result=comments_result,
         document_id=args.document_id,
     )
-    matcher.match_and_save(
-        output_path=args.output_path,
-        match_mode=args.match_mode,
-    )
+    matcher.match_and_save(output_path=args.output_path)
 
 
 def main():
@@ -55,9 +52,6 @@ def main():
         help="文档类型: doc / docx / sheet / file / slides",
     )
     p.add_argument("--output-path", required=True, help="输出文件路径")
-    p.add_argument(
-        "--match-mode", default="loose", help="匹配模式: strict / loose，默认loose"
-    )
 
     args = parser.parse_args()
 
