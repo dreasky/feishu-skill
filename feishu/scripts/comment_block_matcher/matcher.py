@@ -40,8 +40,8 @@ class CommentBlockMatcher:
             if not block.block_id:
                 continue
 
-            # 提取块中的 comment_ids
-            block_comment_ids = block.extract_comment_ids()
+            # 提取块中的 comment_ids（去重）
+            block_comment_ids = list(set(block.extract_comment_ids()))
             if not block_comment_ids:
                 continue
 
