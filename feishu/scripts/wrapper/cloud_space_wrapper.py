@@ -343,13 +343,14 @@ class CloudSpaceWrapper(BaseWrapper):
                 )
 
             comments = response.data.items or []
-            all_items = [
+            page_items = [
                 (c if isinstance(c, FileCommentWrapper) else FileCommentWrapper(c))
                 for c in comments
             ]
+            all_items.extend(page_items)
 
             print(
-                f"📄 Page {page_count}: {len(response.data.items or [])} comments, total: {len(all_items)}"
+                f"📄 Page {page_count}: {len(comments)} comments, total: {len(all_items)}"
             )
 
             # 通过 has_more 和 page_token 判断是否有更多分页
@@ -368,7 +369,7 @@ class CloudSpaceWrapper(BaseWrapper):
         if save_path:
             save_file = Path(save_path)
             save_file.parent.mkdir(parents=True, exist_ok=True)
-            save_file.write_text(result.to_json(indent=2), encoding="utf-8")
+            save_file.write_text(result.model_dump_json(indent=2), encoding="utf-8")
             print(f"✅ list_comments saved to: {save_path}")
 
         print(f"✅ list_comments success, total: {len(all_items)} comments")

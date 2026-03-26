@@ -103,7 +103,7 @@ class DocBlockWrapper(BaseWrapper):
         if save_path:
             save_file = Path(save_path)
             save_file.parent.mkdir(parents=True, exist_ok=True)
-            save_file.write_text(result.to_json(indent=2), encoding="utf-8")
+            save_file.write_text(result.model_dump_json(indent=2), encoding="utf-8")
             print(f"✅ list_blocks saved to: {save_path}")
 
         print(f"✅ list_blocks success, total: {len(all_items)} blocks")

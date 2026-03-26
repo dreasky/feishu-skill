@@ -1,6 +1,5 @@
 from typing import List, Optional
-from dataclasses import dataclass, field
-from pydantic import BaseModel
+from pydantic import BaseModel, field_serializer
 from lark_oapi.api.docx.v1 import Block, Text
 from lark_oapi.api.drive.v1 import FileComment
 
@@ -158,27 +157,40 @@ class FileCommentWrapper:
         return replies
 
 
-@dataclass
-class ListCommentsResult:
+class ListCommentsResult(BaseModel):
+    model_config = {"arbitrary_types_allowed": True}
+
     file_token: str
     total_comments: int
-    items: List[FileCommentWrapper] = field(default_factory=list)
+    items: List[FileCommentWrapper]
 
-    def to_json(self, indent: int = 2) -> str:
-        """转换为 JSON 字符串"""
-        import json
+    @field_serializer("items")
+    def serialize_items(self, items: List[FileCommentWrapper]) -> List[dict]:
+        def serialize_value(v):
+            """递归序列化值"""
+            if v is None:
+                return None
+            if isinstance(v, (str, int, float, bool)):
+                return v
+            if isinstance(v, list):
+                return [serialize_value(item) for item in v]
+            if hasattr(v, "__dict__"):
+                result = {}
+                for k2, v2 in v.__dict__.items():
+                    if v2 is not None:
+                        result[k2] = serialize_value(v2)
+                return result if result else None
+            return str(v)
 
-        def serialize_item(item):
-            if hasattr(item, "__dict__"):
-                return {k: v for k, v in item.__dict__.items() if v is not None}
-            return str(item)
+        def serialize_item(item: FileCommentWrapper) -> dict:
+            result = {}
+            if hasattr(item._comment, "__dict__"):
+                for k, v in item._comment.__dict__.items():
+                    if v is not None:
+                        result[k] = serialize_value(v)
+            return result
 
-        data = {
-            "file_token": self.file_token,
-            "total_comments": self.total_comments,
-            "items": [serialize_item(item) for item in self.items],
-        }
-        return json.dumps(data, ensure_ascii=False, indent=indent, default=str)
+        return [serialize_item(item) for item in items]
 
 
 # === 文档块相关实体 ===
@@ -283,24 +295,37 @@ class BlockWrapper:
         return comment_ids
 
 
-@dataclass
-class ListBlocksResult:
+class ListBlocksResult(BaseModel):
+    model_config = {"arbitrary_types_allowed": True}
+
     document_id: str
     total_blocks: int
-    items: List[BlockWrapper] = field(default_factory=list)
+    items: List[BlockWrapper]
 
-    def to_json(self, indent: int = 2) -> str:
-        """转换为 JSON 字符串"""
-        import json
+    @field_serializer("items")
+    def serialize_items(self, items: List[BlockWrapper]) -> List[dict]:
+        def serialize_value(v):
+            """递归序列化值"""
+            if v is None:
+                return None
+            if isinstance(v, (str, int, float, bool)):
+                return v
+            if isinstance(v, list):
+                return [serialize_value(item) for item in v]
+            if hasattr(v, "__dict__"):
+                result = {}
+                for k2, v2 in v.__dict__.items():
+                    if v2 is not None:
+                        result[k2] = serialize_value(v2)
+                return result if result else None
+            return str(v)
 
-        def serialize_item(item):
-            if hasattr(item, "__dict__"):
-                return {k: v for k, v in item.__dict__.items() if v is not None}
-            return str(item)
+        def serialize_item(item: BlockWrapper) -> dict:
+            result = {}
+            if hasattr(item._block, "__dict__"):
+                for k, v in item._block.__dict__.items():
+                    if v is not None:
+                        result[k] = serialize_value(v)
+            return result
 
-        data = {
-            "document_id": self.document_id,
-            "total_blocks": self.total_blocks,
-            "items": [serialize_item(item) for item in self.items],
-        }
-        return json.dumps(data, ensure_ascii=False, indent=indent, default=str)
+        return [serialize_item(item) for item in items]
