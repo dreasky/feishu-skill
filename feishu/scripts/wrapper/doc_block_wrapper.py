@@ -1,109 +1,17 @@
 import json
 from pathlib import Path
-from typing import List, Optional, Union
+from typing import List, Optional
 from lark_oapi.api.docx.v1 import *
-from .wrapper_entity import (
-    ListBlocksResult,
-    BlockUnion,
-    TextBlockItem,
-    Heading1BlockItem,
-    Heading2BlockItem,
-    Heading3BlockItem,
-    Heading4BlockItem,
-    Heading5BlockItem,
-    Heading6BlockItem,
-    Heading7BlockItem,
-    Heading8BlockItem,
-    Heading9BlockItem,
-    ImageBlockItem,
-)
+from .wrapper_entity import ListBlocksResult, BlockWrapper
 from .base_wrapper import BaseWrapper
 from .wrapper_error import WrapperError
 
-
-# Block 类型常量
-BLOCK_TYPE_TEXT = 2
-BLOCK_TYPE_HEADING = [3, 4, 5, 6, 7, 8, 9, 10, 11]  # 标题1-9
-BLOCK_TYPE_IMAGE = 27
-
-# 标题类映射
-HEADING_CLASSES = {
-    3: Heading1BlockItem,
-    4: Heading2BlockItem,
-    5: Heading3BlockItem,
-    6: Heading4BlockItem,
-    7: Heading5BlockItem,
-    8: Heading6BlockItem,
-    9: Heading7BlockItem,
-    10: Heading8BlockItem,
-    11: Heading9BlockItem,
-}
+# 块过滤列表：文本 Block、标题 1-9 Block、图片 Block
+BLOCK_FILTER_LIST = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 27]
 
 
 class DocBlockWrapper(BaseWrapper):
     """飞书云文档 > 文档 > 块 API 封装类"""
-
-    def _get_heading_attr(self, block_type: int) -> str:
-        """获取标题属性名"""
-        return f"heading{block_type - 2}"
-
-    def _extract_text_elements(self, elements_obj) -> List[str]:
-        """提取文本元素为字符串列表"""
-        if not elements_obj:
-            return []
-        return [
-            elem.text_run.content
-            for elem in elements_obj
-            if elem.text_run and elem.text_run.content
-        ]
-
-    def _create_text_block(self, block) -> TextBlockItem:
-        """创建文本块"""
-        elements = self._extract_text_elements(block.text.elements)
-        return TextBlockItem(
-            block_id=block.block_id,
-            parent_id=block.parent_id,
-            elements=elements,
-        )
-
-    def _create_heading_block(self, block, block_type: int) -> Union[
-        Heading1BlockItem,
-        Heading2BlockItem,
-        Heading3BlockItem,
-        Heading4BlockItem,
-        Heading5BlockItem,
-        Heading6BlockItem,
-        Heading7BlockItem,
-        Heading8BlockItem,
-        Heading9BlockItem,
-    ]:
-        """创建标题块"""
-        heading_attr = self._get_heading_attr(block_type)
-        heading_obj = getattr(block, heading_attr, None)
-        elements = self._extract_text_elements(
-            heading_obj.elements if heading_obj else None
-        )
-
-        heading_class = HEADING_CLASSES[block_type]
-        return heading_class(
-            block_id=block.block_id,
-            parent_id=block.parent_id,
-            elements=elements,
-        )
-
-    def _create_image_block(self, block) -> ImageBlockItem:
-        """创建图片块"""
-        caption = None
-        if block.image.caption and block.image.caption.content:
-            caption = block.image.caption.content
-        return ImageBlockItem(
-            block_id=block.block_id,
-            parent_id=block.parent_id,
-            width=block.image.width,
-            height=block.image.height,
-            token=block.image.token,
-            caption=caption,
-        )
 
     def list_blocks(
         self,
@@ -111,12 +19,13 @@ class DocBlockWrapper(BaseWrapper):
         save_path: Optional[str] = None,
         document_revision_id: Optional[int] = None,
         user_id_type: Optional[str] = None,
+        is_filter: bool = False,
     ) -> ListBlocksResult:
         """
         获取文档所有块（自动分页）并保存到文件
         https://open.feishu.cn/document/ukTMukTMukTM/uUDN04SN0QjL1QDN/document-docx/docx-v1/document-block/list
         """
-        all_items: List[BlockUnion] = []
+        all_items: List[BlockWrapper] = []
         page_token = None
         page_count = 0
 
@@ -159,17 +68,18 @@ class DocBlockWrapper(BaseWrapper):
                 raise WrapperError(method="list_blocks", detail="response.data is null")
 
             # 解析块列表
-            for block in response.data.items or []:
-                block_type = block.block_type
-
-                if block_type == BLOCK_TYPE_TEXT:
-                    all_items.append(self._create_text_block(block))
-
-                elif block_type in BLOCK_TYPE_HEADING:
-                    all_items.append(self._create_heading_block(block, block_type))
-
-                elif block_type == BLOCK_TYPE_IMAGE:
-                    all_items.append(self._create_image_block(block))
+            blocks = response.data.items or []
+            if is_filter:
+                all_items = [
+                    (b if isinstance(b, BlockWrapper) else BlockWrapper(b))
+                    for b in blocks
+                    if b.block_type in BLOCK_FILTER_LIST
+                ]
+            else:
+                all_items = [
+                    (b if isinstance(b, BlockWrapper) else BlockWrapper(b))
+                    for b in blocks
+                ]
 
             print(
                 f"📄 Page {page_count}: {len(response.data.items or [])} blocks, total: {len(all_items)}"
