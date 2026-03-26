@@ -75,9 +75,11 @@ class DocBlockWrapper(BaseWrapper):
             has_more = data_dict.get("has_more") or False
             next_page_token = data_dict.get("page_token")
             if is_filter:
-                page_items = [b for b in blocks if b.block_type in BLOCK_FILTER_LIST]
+                page_items = [
+                    BlockWrapper(b) for b in blocks if b.block_type in BLOCK_FILTER_LIST
+                ]
             else:
-                page_items = list(blocks)
+                page_items = [BlockWrapper(b) for b in blocks]
             all_items.extend(page_items)
 
             print(
