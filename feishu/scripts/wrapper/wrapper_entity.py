@@ -1,7 +1,46 @@
-from typing import List, Optional
+from typing import List, Optional, Any
 from pydantic import BaseModel, field_serializer
 from lark_oapi.api.docx.v1 import Block, Text
 from lark_oapi.api.drive.v1 import FileComment
+from lark_oapi.api.im.v1 import Message
+
+
+# === 通用序列化工具 ===
+def _serialize_value(v: Any) -> Any:
+    """递归序列化值"""
+    if v is None:
+        return None
+    if isinstance(v, (str, int, float, bool)):
+        return v
+    if isinstance(v, list):
+        return [_serialize_value(item) for item in v]
+    if hasattr(v, "__dict__"):
+        result = {}
+        for k2, v2 in v.__dict__.items():
+            if v2 is not None:
+                result[k2] = _serialize_value(v2)
+        return result if result else None
+    return str(v)
+
+
+def _serialize_wrapper_items(items: List[Any], inner_attr: str) -> List[dict]:
+    """
+    序列化 Wrapper 列表
+
+    Args:
+        items: Wrapper 对象列表
+        inner_attr: 内部 SDK 对象的属性名，如 '_block', '_comment', '_message'
+    """
+    result_list = []
+    for item in items:
+        result = {}
+        inner_obj = getattr(item, inner_attr, None)
+        if inner_obj and hasattr(inner_obj, "__dict__"):
+            for k, v in inner_obj.__dict__.items():
+                if v is not None:
+                    result[k] = _serialize_value(v)
+        result_list.append(result)
+    return result_list
 
 
 class SendMessageResult(BaseModel):
@@ -69,33 +108,48 @@ class BatchPermissionMemberResult(BaseModel):
     member_count: int
 
 
-class MessageSender(BaseModel):
-    id: Optional[str]
-    id_type: Optional[str]
-    sender_type: Optional[str]
-    tenant_key: Optional[str]
+# === 消息相关实体 ===
+class MessageWrapper:
+    """
+    Message 包装类 (组合模式)。
 
+    设计意图：
+    1. 使用组合避免继承 SDK 类带来的 __getattr__ 冲突。
+    2. 使用 __getattr__ 动态转发所有属性访问。
+    3. 使用类型注解欺骗 IDE，提供智能提示，不影响运行时转发逻辑。
+    """
 
-class MessageItem(BaseModel):
+    def __init__(self, message: Message):
+        object.__setattr__(self, "_message", message)
+
+    # 类型注解（不赋值），仅用于 IDE 智能提示
     message_id: Optional[str]
     msg_type: Optional[str]
     create_time: Optional[int]
     update_time: Optional[int]
     deleted: Optional[bool]
     updated: Optional[bool]
-    chat_id: Optional[str] = None
-    root_id: Optional[str] = None
-    parent_id: Optional[str] = None
-    thread_id: Optional[str] = None
-    upper_message_id: Optional[str] = None
-    sender: Optional[MessageSender] = None
-    content: Optional[str] = None
+    chat_id: Optional[str]
+    root_id: Optional[str]
+    parent_id: Optional[str]
+    thread_id: Optional[str]
+    upper_message_id: Optional[str]
+    content: Optional[str]
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self._message, name)
 
 
 class ListMessageResult(BaseModel):
-    items: List[MessageItem]
+    model_config = {"arbitrary_types_allowed": True}
+
     has_more: bool
     page_token: Optional[str] = None
+    items: List[MessageWrapper]
+
+    @field_serializer("items")
+    def serialize_items(self, items: List[MessageWrapper]) -> List[dict]:
+        return _serialize_wrapper_items(items, "_message")
 
 
 class GetMessageResourceResult(BaseModel):
@@ -104,9 +158,15 @@ class GetMessageResourceResult(BaseModel):
 
 
 class GetMessageContentResult(BaseModel):
-    items: List[MessageItem]
+    model_config = {"arbitrary_types_allowed": True}
+    items: List[MessageWrapper]
+
+    @field_serializer("items")
+    def serialize_items(self, items: List[MessageWrapper]) -> List[dict]:
+        return _serialize_wrapper_items(items, "_message")
 
 
+# === 机器人信息实体 ===
 class GetBotInfoResult(BaseModel):
     open_id: str
     app_name: str
@@ -117,25 +177,30 @@ class GetBotInfoResult(BaseModel):
 
 # === 评论相关实体 ===
 class FileCommentWrapper:
-    """FileComment 包装类，使用组合而非继承"""
+    """
+    FileComment 包装类 (组合模式)。
+
+    设计意图：
+    1. 使用组合避免继承 SDK 类带来的 __getattr__ 冲突。
+    2. 使用 __getattr__ 动态转发所有属性访问。
+    3. 使用类型注解欺骗 IDE，提供智能提示，不影响运行时转发逻辑。
+    """
 
     def __init__(self, comment: FileComment):
-        object.__setattr__(self, '_comment', comment)
+        object.__setattr__(self, "_comment", comment)
 
-    def __getattr__(self, name):
+    # 类型注解（不赋值），仅用于 IDE 智能提示
+    comment_id: Optional[str]
+    quote: Optional[str]
+    reply_list: Optional[Any]
+    content: Optional[Any]
+    user_id: Optional[str]
+    create_time: Optional[int]
+    is_whole: Optional[bool]
+    is_solved: Optional[bool]
+
+    def __getattr__(self, name: str) -> Any:
         return getattr(self._comment, name)
-
-    @property
-    def comment_id(self) -> Optional[str]:
-        return self._comment.comment_id
-
-    @property
-    def quote(self) -> Optional[str]:
-        return self._comment.quote
-
-    @property
-    def reply_list(self):
-        return self._comment.reply_list
 
     def extract_comment_replies(self) -> List[str]:
         """提取评论的所有回复内容"""
@@ -166,31 +231,7 @@ class ListCommentsResult(BaseModel):
 
     @field_serializer("items")
     def serialize_items(self, items: List[FileCommentWrapper]) -> List[dict]:
-        def serialize_value(v):
-            """递归序列化值"""
-            if v is None:
-                return None
-            if isinstance(v, (str, int, float, bool)):
-                return v
-            if isinstance(v, list):
-                return [serialize_value(item) for item in v]
-            if hasattr(v, "__dict__"):
-                result = {}
-                for k2, v2 in v.__dict__.items():
-                    if v2 is not None:
-                        result[k2] = serialize_value(v2)
-                return result if result else None
-            return str(v)
-
-        def serialize_item(item: FileCommentWrapper) -> dict:
-            result = {}
-            if hasattr(item._comment, "__dict__"):
-                for k, v in item._comment.__dict__.items():
-                    if v is not None:
-                        result[k] = serialize_value(v)
-            return result
-
-        return [serialize_item(item) for item in items]
+        return _serialize_wrapper_items(items, "_comment")
 
 
 # === 文档块相关实体 ===
@@ -219,22 +260,42 @@ BLOCK_IMAGE_TYPE = 27  # 图片
 
 
 class BlockWrapper:
-    """Block 包装类，使用组合而非继承，避免 SDK Block 类的 __getattr__ 问题"""
+    """
+    Block 包装类 (组合模式)。
+
+    设计意图：
+    1. 使用组合避免继承 SDK 类带来的 __getattr__ 冲突。
+    2. 使用 __getattr__ 动态转发所有属性访问。
+    3. 使用类型注解欺骗 IDE，提供智能提示，不影响运行时转发逻辑。
+    """
 
     def __init__(self, block: Block):
-        object.__setattr__(self, '_block', block)
+        object.__setattr__(self, "_block", block)
 
-    def __getattr__(self, name):
-        # 转发到内部 block
+    # 类型注解（不赋值），仅用于 IDE 智能提示
+    block_id: Optional[str]
+    block_type: Optional[int]
+    parent_id: Optional[str]
+    children: Optional[List[str]]
+    text: Optional[Text]
+    heading1: Optional[Text]
+    heading2: Optional[Text]
+    heading3: Optional[Text]
+    heading4: Optional[Text]
+    heading5: Optional[Text]
+    heading6: Optional[Text]
+    heading7: Optional[Text]
+    heading8: Optional[Text]
+    heading9: Optional[Text]
+    bullet: Optional[Text]
+    ordered: Optional[Text]
+    code: Optional[Text]
+    quote: Optional[Text]
+    todo: Optional[Text]
+    page: Optional[Text]
+
+    def __getattr__(self, name: str) -> Any:
         return getattr(self._block, name)
-
-    @property
-    def block_type(self) -> Optional[int]:
-        return self._block.block_type
-
-    @property
-    def block_id(self) -> Optional[str]:
-        return self._block.block_id
 
     def is_text_block(self) -> bool:
         return self.block_type in BLOCK_TEXT_TYPES
@@ -304,28 +365,4 @@ class ListBlocksResult(BaseModel):
 
     @field_serializer("items")
     def serialize_items(self, items: List[BlockWrapper]) -> List[dict]:
-        def serialize_value(v):
-            """递归序列化值"""
-            if v is None:
-                return None
-            if isinstance(v, (str, int, float, bool)):
-                return v
-            if isinstance(v, list):
-                return [serialize_value(item) for item in v]
-            if hasattr(v, "__dict__"):
-                result = {}
-                for k2, v2 in v.__dict__.items():
-                    if v2 is not None:
-                        result[k2] = serialize_value(v2)
-                return result if result else None
-            return str(v)
-
-        def serialize_item(item: BlockWrapper) -> dict:
-            result = {}
-            if hasattr(item._block, "__dict__"):
-                for k, v in item._block.__dict__.items():
-                    if v is not None:
-                        result[k] = serialize_value(v)
-            return result
-
-        return [serialize_item(item) for item in items]
+        return _serialize_wrapper_items(items, "_block")

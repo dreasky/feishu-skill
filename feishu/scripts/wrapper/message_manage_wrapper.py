@@ -68,7 +68,9 @@ class MessageManageWrapper(BaseWrapper):
             )
 
         result = SendMessageResult(
-            receive_id_type=receive_id_type, receive_id=receive_id, msg_type=msg_type
+            receive_id_type=receive_id_type,
+            receive_id=receive_id,
+            msg_type=msg_type,
         )
 
         print(f"✅ send_message success", result.model_dump_json(indent=2))
@@ -121,32 +123,12 @@ class MessageManageWrapper(BaseWrapper):
 
         if response.data is None:
             raise WrapperError(method="list_messages", detail="response.data is null")
+        if response.data.items is None:
+            raise WrapperError(
+                method="list_messages", detail="response.data.items is null"
+            )
 
-        items = []
-        for msg in (response.data.items or []):
-            sender = None
-            if msg.sender:
-                sender = MessageSender(
-                    id=msg.sender.id,
-                    id_type=msg.sender.id_type,
-                    sender_type=msg.sender.sender_type,
-                    tenant_key=msg.sender.tenant_key,
-                )
-            items.append(MessageItem(
-                message_id=msg.message_id,
-                msg_type=msg.msg_type,
-                create_time=msg.create_time,
-                update_time=msg.update_time,
-                deleted=msg.deleted,
-                updated=msg.updated,
-                chat_id=msg.chat_id,
-                root_id=msg.root_id,
-                parent_id=msg.parent_id,
-                thread_id=msg.thread_id,
-                upper_message_id=msg.upper_message_id,
-                sender=sender,
-                content=msg.body.content if msg.body else None,
-            ))
+        items = [MessageWrapper(m) for m in response.data.items]
 
         result = ListMessageResult(
             items=items,
@@ -174,7 +156,9 @@ class MessageManageWrapper(BaseWrapper):
             .type(type)
             .build()
         )
-        response: GetMessageResourceResponse = self._client.im.v1.message_resource.get(request)
+        response: GetMessageResourceResponse = self._client.im.v1.message_resource.get(
+            request
+        )
 
         if not response.success():
             resp_data = (
@@ -191,10 +175,14 @@ class MessageManageWrapper(BaseWrapper):
             )
 
         if response.file is None:
-            raise WrapperError(method="get_message_resource", detail="response.file is null")
+            raise WrapperError(
+                method="get_message_resource", detail="response.file is null"
+            )
 
         if response.file_name is None:
-            raise WrapperError(method="get_message_resource", detail="response.file_name is null")
+            raise WrapperError(
+                method="get_message_resource", detail="response.file_name is null"
+            )
 
         save_path = save_dir / response.file_name
         save_path.parent.mkdir(parents=True, exist_ok=True)
@@ -239,35 +227,17 @@ class MessageManageWrapper(BaseWrapper):
             )
 
         if response.data is None:
-            raise WrapperError(method="get_message_content", detail="response.data is null")
+            raise WrapperError(
+                method="get_message_content", detail="response.data is null"
+            )
 
-        items = []
-        for msg in (response.data.items or []):
-            sender = None
-            if msg.sender:
-                sender = MessageSender(
-                    id=msg.sender.id,
-                    id_type=msg.sender.id_type,
-                    sender_type=msg.sender.sender_type,
-                    tenant_key=msg.sender.tenant_key,
-                )
-            items.append(MessageItem(
-                message_id=msg.message_id,
-                msg_type=msg.msg_type,
-                create_time=msg.create_time,
-                update_time=msg.update_time,
-                deleted=msg.deleted,
-                updated=msg.updated,
-                chat_id=msg.chat_id,
-                root_id=msg.root_id,
-                parent_id=msg.parent_id,
-                thread_id=msg.thread_id,
-                upper_message_id=msg.upper_message_id,
-                sender=sender,
-                content=msg.body.content if msg.body else None,
-            ))
+        if response.data.items is None:
+            raise WrapperError(
+                method="get_message_content", detail="response.data.items is null"
+            )
+
+        items = [MessageWrapper(m) for m in response.data.items]
 
         result = GetMessageContentResult(items=items)
         print(f"✅ get_message_content success", result.model_dump_json(indent=2))
         return result
-
