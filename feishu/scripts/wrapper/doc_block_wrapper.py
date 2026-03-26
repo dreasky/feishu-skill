@@ -68,27 +68,26 @@ class DocBlockWrapper(BaseWrapper):
                 raise WrapperError(method="list_blocks", detail="response.data is null")
 
             # 解析块列表
-            blocks = response.data.items or []
+            # SDK 的 ListDocumentBlockResponseBody 有 __getattr__ 会转发到 Block，导致直接访问 items 失败
+            # 需要通过 __dict__ 直接访问
+            data_dict = response.data.__dict__
+            blocks = data_dict.get("items") or []
+            has_more = data_dict.get("has_more") or False
+            next_page_token = data_dict.get("page_token")
             if is_filter:
-                all_items = [
-                    (b if isinstance(b, BlockWrapper) else BlockWrapper(b))
-                    for b in blocks
-                    if b.block_type in BLOCK_FILTER_LIST
-                ]
+                page_items = [b for b in blocks if b.block_type in BLOCK_FILTER_LIST]
             else:
-                all_items = [
-                    (b if isinstance(b, BlockWrapper) else BlockWrapper(b))
-                    for b in blocks
-                ]
+                page_items = list(blocks)
+            all_items.extend(page_items)
 
             print(
-                f"📄 Page {page_count}: {len(response.data.items or [])} blocks, total: {len(all_items)}"
+                f"📄 Page {page_count}: {len(blocks or [])} blocks, total: {len(all_items)}"
             )
 
             # 通过 has_more 和 page_token 判断是否有更多分页
-            if not response.data.has_more:
+            if not has_more:
                 break
-            page_token = response.data.page_token
+            page_token = next_page_token
             if not page_token:
                 break
 
@@ -102,7 +101,7 @@ class DocBlockWrapper(BaseWrapper):
         if save_path:
             save_file = Path(save_path)
             save_file.parent.mkdir(parents=True, exist_ok=True)
-            save_file.write_text(result.model_dump_json(indent=2), encoding="utf-8")
+            save_file.write_text(result.to_json(indent=2), encoding="utf-8")
             print(f"✅ list_blocks saved to: {save_path}")
 
         print(f"✅ list_blocks success, total: {len(all_items)} blocks")

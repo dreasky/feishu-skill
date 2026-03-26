@@ -1,4 +1,5 @@
 from typing import List, Optional
+from dataclasses import dataclass, field
 from pydantic import BaseModel
 from lark_oapi.api.docx.v1 import Block, Text
 from lark_oapi.api.drive.v1 import FileComment
@@ -116,11 +117,29 @@ class GetBotInfoResult(BaseModel):
 
 
 # === 评论相关实体 ===
-class FileCommentWrapper(FileComment):
+class FileCommentWrapper:
+    """FileComment 包装类，使用组合而非继承"""
+
+    def __init__(self, comment: FileComment):
+        object.__setattr__(self, '_comment', comment)
+
+    def __getattr__(self, name):
+        return getattr(self._comment, name)
+
+    @property
+    def comment_id(self) -> Optional[str]:
+        return self._comment.comment_id
+
+    @property
+    def quote(self) -> Optional[str]:
+        return self._comment.quote
+
+    @property
+    def reply_list(self):
+        return self._comment.reply_list
 
     def extract_comment_replies(self) -> List[str]:
         """提取评论的所有回复内容"""
-
         if not self.reply_list:
             return []
 
@@ -139,10 +158,27 @@ class FileCommentWrapper(FileComment):
         return replies
 
 
-class ListCommentsResult(BaseModel):
+@dataclass
+class ListCommentsResult:
     file_token: str
     total_comments: int
-    items: List[FileCommentWrapper]
+    items: List[FileCommentWrapper] = field(default_factory=list)
+
+    def to_json(self, indent: int = 2) -> str:
+        """转换为 JSON 字符串"""
+        import json
+
+        def serialize_item(item):
+            if hasattr(item, "__dict__"):
+                return {k: v for k, v in item.__dict__.items() if v is not None}
+            return str(item)
+
+        data = {
+            "file_token": self.file_token,
+            "total_comments": self.total_comments,
+            "items": [serialize_item(item) for item in self.items],
+        }
+        return json.dumps(data, ensure_ascii=False, indent=indent, default=str)
 
 
 # === 文档块相关实体 ===
@@ -170,9 +206,25 @@ BLOCK_TEXT_TYPES_TO_ATTR = {
 BLOCK_IMAGE_TYPE = 27  # 图片
 
 
-class BlockWrapper(Block):
+class BlockWrapper:
+    """Block 包装类，使用组合而非继承，避免 SDK Block 类的 __getattr__ 问题"""
 
-    def is_text_block(self):
+    def __init__(self, block: Block):
+        object.__setattr__(self, '_block', block)
+
+    def __getattr__(self, name):
+        # 转发到内部 block
+        return getattr(self._block, name)
+
+    @property
+    def block_type(self) -> Optional[int]:
+        return self._block.block_type
+
+    @property
+    def block_id(self) -> Optional[str]:
+        return self._block.block_id
+
+    def is_text_block(self) -> bool:
         return self.block_type in BLOCK_TEXT_TYPES
 
     def get_text_attr(self) -> Optional[Text]:
@@ -184,7 +236,7 @@ class BlockWrapper(Block):
             return None
 
         attr_name = BLOCK_TEXT_TYPES_TO_ATTR[self.block_type]
-        return getattr(self, attr_name, None)
+        return getattr(self._block, attr_name, None)
 
     def extract_block_content(self) -> str:
         """提取文本块的完整文本内容"""
@@ -231,7 +283,24 @@ class BlockWrapper(Block):
         return comment_ids
 
 
-class ListBlocksResult(BaseModel):
+@dataclass
+class ListBlocksResult:
     document_id: str
     total_blocks: int
-    items: List[BlockWrapper]
+    items: List[BlockWrapper] = field(default_factory=list)
+
+    def to_json(self, indent: int = 2) -> str:
+        """转换为 JSON 字符串"""
+        import json
+
+        def serialize_item(item):
+            if hasattr(item, "__dict__"):
+                return {k: v for k, v in item.__dict__.items() if v is not None}
+            return str(item)
+
+        data = {
+            "document_id": self.document_id,
+            "total_blocks": self.total_blocks,
+            "items": [serialize_item(item) for item in self.items],
+        }
+        return json.dumps(data, ensure_ascii=False, indent=indent, default=str)
