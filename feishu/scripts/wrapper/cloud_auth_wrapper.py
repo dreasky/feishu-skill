@@ -1,7 +1,18 @@
 import json
 from typing import List
-from lark_oapi.api.drive.v1 import *
-from .wrapper_entity import *
+from lark_oapi.api.drive.v1 import (
+    BaseMember,
+    CreatePermissionMemberRequest,
+    CreatePermissionMemberResponse,
+    BatchCreatePermissionMemberRequest,
+    BatchCreatePermissionMemberRequestBody,
+    BatchCreatePermissionMemberResponse,
+)
+from .wrapper_entity import (
+    PermissionMemberResult,
+    BatchPermissionMemberResult,
+    BaseMemberWrapper,
+)
 from .base_wrapper import BaseWrapper
 from .wrapper_error import WrapperError
 
@@ -73,10 +84,21 @@ class CloudAuthWrapper(BaseWrapper):
                 resp=resp_data,
             )
 
+        if response.data is None:
+            raise WrapperError(
+                method="create_permission_member", detail="response.data is null"
+            )
+
+        if response.data.member is None:
+            raise WrapperError(
+                method="create_permission_member",
+                detail="response.data.member is null",
+            )
+
+        item = BaseMemberWrapper(response.data.member)
+
         # 处理业务结果
-        result = PermissionMemberResult(
-            member_type=member_type, member_id=member_id, perm=perm
-        )
+        result = PermissionMemberResult(item=item)
         print(f"✅ create_permission_member success", result.model_dump_json(indent=2))
         return result
 
@@ -148,8 +170,23 @@ class CloudAuthWrapper(BaseWrapper):
                 resp=resp_data,
             )
 
+        if response.data is None:
+            raise WrapperError(
+                method="batch_create_permission_member", detail="response.data is null"
+            )
+
+        if response.data.members is None:
+            raise WrapperError(
+                method="batch_create_permission_member",
+                detail="response.data.members is null",
+            )
+
+        items = [BaseMemberWrapper(m) for m in response.data.members]
+
         # 处理业务结果
-        result = BatchPermissionMemberResult(member_count=len(member_id_list))
+        result = BatchPermissionMemberResult(
+            member_count=len(member_id_list), items=items
+        )
         print(
             f"✅ batch_create_permission_member success",
             result.model_dump_json(indent=2),

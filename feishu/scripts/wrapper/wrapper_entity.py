@@ -1,7 +1,7 @@
 from typing import List, Optional, Any
 from pydantic import BaseModel, field_serializer
 from lark_oapi.api.docx.v1 import Block, Text
-from lark_oapi.api.drive.v1 import FileComment
+from lark_oapi.api.drive.v1 import FileComment, BaseMember
 from lark_oapi.api.im.v1 import Message
 
 
@@ -41,6 +41,23 @@ def _serialize_wrapper_items(items: List[Any], inner_attr: str) -> List[dict]:
                     result[k] = _serialize_value(v)
         result_list.append(result)
     return result_list
+
+
+def _serialize_wrapper_item(item: Any, inner_attr: str) -> dict:
+    """
+    序列化单个 Wrapper 对象
+
+    Args:
+        item: Wrapper 对象
+        inner_attr: 内部 SDK 对象的属性名，如 '_member', '_comment'
+    """
+    result = {}
+    inner_obj = getattr(item, inner_attr, None)
+    if inner_obj and hasattr(inner_obj, "__dict__"):
+        for k, v in inner_obj.__dict__.items():
+            if v is not None:
+                result[k] = _serialize_value(v)
+    return result
 
 
 class SendMessageResult(BaseModel):
@@ -98,14 +115,43 @@ class ImportTaskResult(BaseModel):
     url: str
 
 
+# === 云文档-权限相关实体 ===
+class BaseMemberWrapper:
+    """协作者实体封装类"""
+
+    def __init__(self, member: BaseMember):
+        object.__setattr__(self, "_member", member)
+
+    # 类型注解（不赋值），仅用于 IDE 智能提示
+    member_type: Optional[str]
+    member_id: Optional[str]
+    perm: Optional[str]
+    perm_type: Optional[str]
+    type: Optional[str]
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self._member, name)
+
+
 class PermissionMemberResult(BaseModel):
-    member_type: str
-    member_id: str
-    perm: str
+    model_config = {"arbitrary_types_allowed": True}
+
+    item: BaseMemberWrapper
+
+    @field_serializer("item")
+    def serialize_item(self, item: BaseMemberWrapper) -> dict:
+        return _serialize_wrapper_item(item, "_member")
 
 
 class BatchPermissionMemberResult(BaseModel):
+    model_config = {"arbitrary_types_allowed": True}
+
     member_count: int
+    items: List[BaseMemberWrapper]
+
+    @field_serializer("items")
+    def serialize_items(self, items: List[BaseMemberWrapper]) -> List[dict]:
+        return _serialize_wrapper_items(items, "_member")
 
 
 # === 消息相关实体 ===
@@ -177,14 +223,7 @@ class GetBotInfoResult(BaseModel):
 
 # === 评论相关实体 ===
 class FileCommentWrapper:
-    """
-    FileComment 包装类 (组合模式)。
-
-    设计意图：
-    1. 使用组合避免继承 SDK 类带来的 __getattr__ 冲突。
-    2. 使用 __getattr__ 动态转发所有属性访问。
-    3. 使用类型注解欺骗 IDE，提供智能提示，不影响运行时转发逻辑。
-    """
+    """FileComment 包装类 (组合模式)"""
 
     def __init__(self, comment: FileComment):
         object.__setattr__(self, "_comment", comment)
