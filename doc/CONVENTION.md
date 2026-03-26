@@ -2,196 +2,177 @@
 
 ## 文件结构
 
-```txt
-feishu/scripts/
-├── run.py                        # 入口：管理 venv、安装依赖、执行脚本
-├── lark_cli.py                   # CLI 命令定义
-├── base/
-│   └── lark_auth.py              # 鉴权（不修改）
-└── wrapper/
-    ├── __init__.py               # 导出所有 Wrapper 类
-    ├── base_wrapper.py           # BaseWrapper 基类（不添加业务方法）
-    ├── wrapper_entity.py         # 所有 Result / Item 实体类
-    ├── wrapper_error.py          # WrapperError 异常类
-    ├── message_manage_wrapper.py
-    ├── group_manage_wrapper.py
-    ├── cloud_space_wrapper.py
-    ├── cloud_auth_wrapper.py
-    └── {module}_wrapper.py       # 新增模块按此命名
 ```
-
----
-
-## Wrapper 文件
-
-每个 `*_wrapper.py` 继承 `BaseWrapper`，只包含对应飞书 API 模块的方法。
-
-```python
-# wrapper/{module}_wrapper.py
-from lark_oapi.api.{service}.{version} import XxxRequest, XxxResponse  # 按需导入，不用 *
-from .base_wrapper import BaseWrapper
-from .wrapper_entity import XxxResult
-from .wrapper_error import WrapperError
-
-class XxxWrapper(BaseWrapper):
-    def do_something(self, param: str) -> XxxResult:
-        """方法说明\nhttps://open.feishu.cn/document/..."""
-        request = XxxRequest.builder().param(param).build()
-        response: XxxResponse = self._client.xxx.v1.yyy.zzz(request)
-
-        if not response.success():
-            raise WrapperError(
-                method="do_something",
-                code=response.code, msg=response.msg,
-                log_id=response.get_log_id(),
-                resp=json.loads(response.raw.content) if response.raw and response.raw.content else {},
-            )
-
-        result = XxxResult(field=response.data.field)
-        print(f"✅ do_something success", result.model_dump_json(indent=2))
-        return result
+feishu/scripts/
+├── run.py                        # 入口
+├── lark_cli.py                   # CLI 命令
+├── base/lark_auth.py             # 鉴权（不修改）
+└── wrapper/
+    ├── __init__.py               # 导出
+    ├── base_wrapper.py           # 基类（不添加业务方法）
+    ├── wrapper_entity.py         # 实体类
+    ├── wrapper_error.py          # 异常类
+    └── {module}_wrapper.py       # API 封装
 ```
 
 ---
 
 ## 实体类（wrapper_entity.py）
 
-所有 Result / Item 类统一放在 `wrapper/wrapper_entity.py`，使用 Pydantic `BaseModel`。
+### Wrapper 类（组合模式）
 
-命名规则：`{动作}{对象}{类型}`
-
-| 类型     | 示例                                          |
-| -------- | --------------------------------------------- |
-| 列表子项 | `ListChatItem`, `FileItem`                    |
-| 返回值   | `SendMessageResult`, `UploadMediaResult`      |
-| 中间数据 | `ImportTaskTicket`                            |
+SDK 实体类有 `__getattr__` 冲突，用组合替代继承：
 
 ```python
-class XxxItem(BaseModel):
-    id: str
-    name: str
+class BlockWrapper:
+    def __init__(self, block: Block):
+        object.__setattr__(self, "_block", block)
 
-class XxxResult(BaseModel):
-    items: List[XxxItem]
-    token: Optional[str] = None
+    # 类型注解（不赋值！），仅 IDE 提示
+    block_id: Optional[str]
+    block_type: Optional[int]
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self._block, name)
+
+    def is_text_block(self) -> bool:  # 自定义扩展方法
+        return self.block_type in BLOCK_TEXT_TYPES
+```
+
+### Result 类（Pydantic）
+
+```python
+class ListBlocksResult(BaseModel):
+    model_config = {"arbitrary_types_allowed": True}  # 必须
+
+    document_id: str
+    items: List[BlockWrapper]
+
+    @field_serializer("items")
+    def serialize_items(self, items: List[BlockWrapper]) -> List[dict]:
+        return _serialize_wrapper_items(items, "_block")
+```
+
+### 序列化工具
+
+```python
+def _serialize_value(v: Any) -> Any:
+    if v is None or isinstance(v, (str, int, float, bool)): return v
+    if isinstance(v, list): return [_serialize_value(i) for i in v]
+    if hasattr(v, "__dict__"): return {k: _serialize_value(v2) for k, v2 in v.__dict__.items() if v2 is not None} or None
+    return str(v)
+
+def _serialize_wrapper_items(items: List[Any], inner_attr: str) -> List[dict]:
+    return [{k: _serialize_value(v) for k, v in getattr(i, inner_attr).__dict__.items() if v is not None} for i in items if getattr(i, inner_attr)]
+
+def _serialize_wrapper_item(item: Any, inner_attr: str) -> dict:
+    inner = getattr(item, inner_attr)
+    return {k: _serialize_value(v) for k, v in inner.__dict__.items() if v is not None} if inner else {}
+```
+
+### 命名规则
+
+| 类型    | 格式            | 示例                        |
+| ------- | --------------- | --------------------------- |
+| Wrapper | `{Entity}Wrapper` | `BlockWrapper`              |
+| Result  | `{Action}Result`  | `ListBlocksResult`          |
+| 内部属性 | `_{entity}`       | `_block`, `_comment`        |
+
+---
+
+## Wrapper 文件
+
+### 基本结构
+
+```python
+class XxxWrapper(BaseWrapper):
+    def do_something(self, param: str) -> XxxResult:
+        """方法说明\nhttps://open.feishu.cn/document/..."""
+        request = XxxRequest.builder().param(param).build()
+        response = self._client.xxx.v1.yyy.zzz(request)
+
+        if not response.success():
+            raise WrapperError(method="do_something", code=response.code, msg=response.msg,
+                log_id=response.get_log_id(), resp=json.loads(response.raw.content or "{}"))
+
+        print(f"✅ do_something success", result.model_dump_json(indent=2))
+        return XxxResult(field=response.data.field)
+```
+
+### 分页处理
+
+**关键**：SDK 响应通过 `__dict__` 访问，避免 `__getattr__` 问题
+
+```python
+all_items = []
+page_token = None
+
+while True:
+    builder = Request.builder().page_size(500)
+    if page_token: builder = builder.page_token(page_token)
+    response = self._client.xxx.v1.yyy.list(builder.build())
+
+    if not response.success(): raise WrapperError(...)
+
+    data = response.data.__dict__  # 通过 __dict__ 访问
+    items = data.get("items") or []
+    all_items.extend([Wrapper(i) for i in items])  # 用 extend 累积
+
+    print(f"📄 Page: {len(items)}, total: {len(all_items)}")
+
+    if not data.get("has_more") or not data.get("page_token"): break
+    page_token = data["page_token"]
+
+if save_path: Path(save_path).write_text(result.model_dump_json(indent=2))
+print(f"✅ success, total: {len(all_items)}")
+return Result(items=all_items)
 ```
 
 ---
 
 ## 错误处理
 
-`WrapperError` 字段：
-
 ```python
-method: str           # 方法名
-code: Optional[int]   # 飞书错误码
-msg: Optional[str]    # 飞书错误描述
-log_id: Optional[str] # 请求 log_id
-resp: Optional[dict]  # 原始响应体
-detail: Optional[str] # 补充说明
-```
-
-三种场景：
-
-```python
-# SDK 响应失败
+# SDK 失败
 if not response.success():
     raise WrapperError(method="x", code=response.code, msg=response.msg,
-                       log_id=response.get_log_id(), resp=json.loads(response.raw.content))
+        log_id=response.get_log_id(), resp=json.loads(response.raw.content or "{}"))
 
-# 响应数据为空
+# 数据为空
 if response.data is None:
     raise WrapperError(method="x", detail="response.data is null")
 
-# 原始 HTTP 请求失败
+# 原始 HTTP 失败
 if resp_json.get("code") != 0:
     raise WrapperError(method="x", resp=resp_json)
 ```
 
-禁止：`lark.logger.error(...)` / `return {}` / `return []` / 将字段拼成字符串传入
+**禁止**：`lark.logger.error()` / `return {}` / `return []` / 字段拼字符串
 
 ---
 
-## 成功日志
+## 关键规则
 
-```python
-print(f"✅ method_name success", result.model_dump_json(indent=2))
-```
-
----
-
-## 原始 HTTP 请求（SDK 不支持时）
-
-```python
-response = requests.get(url, headers=headers)
-response.raise_for_status()
-resp_json = response.json()
-if resp_json.get("code") != 0:
-    raise WrapperError(method="method_name", resp=resp_json)
-```
+1. **不继承 SDK 类** → 用 Wrapper 组合
+2. **类型注解不赋值** → 否则 `__getattr__` 不触发
+3. **Result 必须配 `arbitrary_types_allowed`**
+4. **响应通过 `__dict__` 访问**
+5. **分页用 `extend` 累积**
 
 ---
 
-## 新增命令到 SKILL.md
-
-新增命令后必须同步更新 `feishu/SKILL.md`。
-
-### 结构层级
+## SKILL.md 命令格式
 
 ```markdown
-## 命令参考
-### 速查索引          ← 所有命令汇总表
----
-### {类别}            ← H3
-#### `{命令}` — {说明}  ← H4 命令卡片
-```
-
-### 速查索引格式
-
-```markdown
-| 类别   | 命令          | 说明         |
-| ------ | ------------- | ------------ |
-| 消息   | `send-text`   | 发送文本消息 |
-```
-
-新增命令在对应类别末尾追加一行，不改变类别顺序。
-
-### 命令卡片格式
-
-```markdown
-#### `{命令名}` — {一句话说明}
+#### `{命令}` — {说明}
 
 | 参数    | 必填 | 说明 |
 | ------- | ---- | ---- |
 | `--foo` | 是   | ...  |
-| `--bar` | 否   | ...  |
-
-{补充说明（可选）}
 
 ​```bash
-python scripts/run.py lark_cli.py {命令名} --foo "<value>"
+python scripts/run.py lark_cli.py {命令} --foo "<value>"
 ​```
 ```
 
-规则：
-
-- 无参数命令省略表格，直接写"无参数。"
-- 示例只保留典型用法，多场景用注释区分
-- 卡片之间用 `---` 分隔
-
-### 示例
-
-```markdown
-#### `upload-file` — 上传任意文件
-
-| 参数          | 必填 | 说明                    |
-| ------------- | ---- | ----------------------- |
-| `--file-path` | 是   | 本地文件路径            |
-| `--obj-type`  | 否   | 文档类型（默认 `docx`） |
-
-返回 ticket，用于后续查询导入任务。
-
-​```bash
-python scripts/run.py lark_cli.py upload-file --file-path "/path/to/file"
-​```
-```
+新增命令后同步更新 `feishu/SKILL.md`。
