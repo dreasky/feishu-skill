@@ -1,5 +1,7 @@
-from typing import List, Literal, Optional, Union, Annotated
-from pydantic import BaseModel, Field
+from typing import List, Optional
+from pydantic import BaseModel
+from lark_oapi.api.docx.v1 import Block, Text
+from lark_oapi.api.drive.v1 import FileComment
 
 
 class SendMessageResult(BaseModel):
@@ -114,154 +116,122 @@ class GetBotInfoResult(BaseModel):
 
 
 # === 评论相关实体 ===
+class FileCommentWrapper(FileComment):
 
+    def extract_comment_replies(self) -> List[str]:
+        """提取评论的所有回复内容"""
 
-class ReplyTextRun(BaseModel):
-    text: Optional[str] = None
+        if not self.reply_list:
+            return []
 
+        replies = []
+        for reply in self.reply_list.replies or []:
+            if not reply.content:
+                continue
 
-class ReplyDocsLink(BaseModel):
-    url: Optional[str] = None
+            for elem in reply.content.elements or []:
+                if not elem.text_run:
+                    continue
+                if not elem.text_run.text:
+                    continue
 
-
-class ReplyPerson(BaseModel):
-    user_id: Optional[str] = None
-
-
-class ReplyElement(BaseModel):
-    type: Optional[str] = None
-    text_run: Optional[ReplyTextRun] = None
-    docs_link: Optional[ReplyDocsLink] = None
-    person: Optional[ReplyPerson] = None
-
-
-class ReplyContent(BaseModel):
-    elements: List[ReplyElement] = []
-
-
-class ReplyExtra(BaseModel):
-    image_list: List[str] = []
-
-
-class ReplyItem(BaseModel):
-    reply_id: Optional[str] = None
-    user_id: Optional[str] = None
-    create_time: Optional[int] = None
-    update_time: Optional[int] = None
-    content: Optional[ReplyContent] = None
-    extra: Optional[ReplyExtra] = None
-
-
-class ReplyList(BaseModel):
-    replies: List[ReplyItem] = []
-
-
-class CommentItem(BaseModel):
-    comment_id: Optional[str] = None
-    user_id: Optional[str] = None
-    create_time: Optional[int] = None
-    update_time: Optional[int] = None
-    is_solved: Optional[bool] = None
-    solved_time: Optional[int] = None
-    solver_user_id: Optional[str] = None
-    is_whole: Optional[bool] = None
-    quote: Optional[str] = None
-    reply_list: Optional[ReplyList] = None
+                replies.append(elem.text_run.text)
+        return replies
 
 
 class ListCommentsResult(BaseModel):
     file_token: str
     total_comments: int
-    items: List[CommentItem]
+    items: List[FileCommentWrapper]
 
 
 # === 文档块相关实体 ===
-# 1. 基础类
-class BlockItem(BaseModel):
-    block_id: Optional[str] = None
-    parent_id: Optional[str] = None
+
+# 所有文本类 Block 类型（包含 Text 属性）
+BLOCK_TEXT_TYPES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 17]
+BLOCK_TEXT_TYPES_TO_ATTR = {
+    1: "page",
+    2: "text",
+    3: "heading1",
+    4: "heading2",
+    5: "heading3",
+    6: "heading4",
+    7: "heading5",
+    8: "heading6",
+    9: "heading7",
+    10: "heading8",
+    11: "heading9",
+    12: "bullet",
+    13: "ordered",
+    14: "code",
+    15: "quote",
+    17: "todo",
+}
+BLOCK_IMAGE_TYPE = 27  # 图片
 
 
-# 2. 文本块 (Type 2)
-class TextBlockItem(BlockItem):
-    block_type: Literal[2] = 2
-    elements: List[str] = []
+class BlockWrapper(Block):
 
+    def is_text_block(self):
+        return self.block_type in BLOCK_TEXT_TYPES
 
-# 3. 标题块 (Type 3-11)
-class Heading1BlockItem(BlockItem):
-    block_type: Literal[3] = 3
-    elements: List[str] = []
+    def get_text_attr(self) -> Optional[Text]:
+        """获取块的 Text 属性"""
+        if not self.is_text_block():
+            return None
 
+        if not self.block_type:
+            return None
 
-class Heading2BlockItem(BlockItem):
-    block_type: Literal[4] = 4
-    elements: List[str] = []
+        attr_name = BLOCK_TEXT_TYPES_TO_ATTR[self.block_type]
+        return getattr(self, attr_name, None)
 
+    def extract_block_content(self) -> str:
+        """提取文本块的完整文本内容"""
+        if not self.is_text_block():
+            return ""
 
-class Heading3BlockItem(BlockItem):
-    block_type: Literal[5] = 5
-    elements: List[str] = []
+        text_attr = self.get_text_attr()
+        if not text_attr:
+            return ""
+        if not text_attr.elements:
+            return ""
 
+        parts = [
+            elem.text_run.content
+            for elem in text_attr.elements
+            if elem.text_run and elem.text_run.content
+        ]
+        return "".join(parts)
 
-class Heading4BlockItem(BlockItem):
-    block_type: Literal[6] = 6
-    elements: List[str] = []
+    def extract_comment_ids(self) -> List[str]:
+        """从块中提取所有 comment_ids"""
+        if not self.is_text_block():
+            return []
 
+        text_attr = self.get_text_attr()
+        if not text_attr:
+            return []
+        if not text_attr.elements:
+            return []
 
-class Heading5BlockItem(BlockItem):
-    block_type: Literal[7] = 7
-    elements: List[str] = []
+        comment_ids = []
+        for elem in text_attr.elements:
+            if not elem.text_run:
+                continue
 
+            if not elem.text_run.text_element_style:
+                continue
 
-class Heading6BlockItem(BlockItem):
-    block_type: Literal[8] = 8
-    elements: List[str] = []
+            if not elem.text_run.text_element_style.comment_ids:
+                continue
 
+            comment_ids.extend(elem.text_run.text_element_style.comment_ids)
 
-class Heading7BlockItem(BlockItem):
-    block_type: Literal[9] = 9
-    elements: List[str] = []
-
-
-class Heading8BlockItem(BlockItem):
-    block_type: Literal[10] = 10
-    elements: List[str] = []
-
-
-class Heading9BlockItem(BlockItem):
-    block_type: Literal[11] = 11
-    elements: List[str] = []
-
-
-# 4. 图片块 (Type 27)
-class ImageBlockItem(BlockItem):
-    block_type: Literal[27] = 27
-    width: Optional[int] = None
-    height: Optional[int] = None
-    token: Optional[str] = None
-    caption: Optional[str] = None
-
-
-BlockUnion = Annotated[
-    Union[
-        TextBlockItem,
-        Heading1BlockItem,
-        Heading2BlockItem,
-        Heading3BlockItem,
-        Heading4BlockItem,
-        Heading5BlockItem,
-        Heading6BlockItem,
-        Heading7BlockItem,
-        Heading8BlockItem,
-        Heading9BlockItem,
-        ImageBlockItem,
-    ],
-    Field(discriminator="block_type"),
-]
+        return comment_ids
 
 
 class ListBlocksResult(BaseModel):
     document_id: str
     total_blocks: int
-    items: List[BlockUnion]
+    items: List[BlockWrapper]

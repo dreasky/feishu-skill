@@ -1,4 +1,3 @@
-import os
 import json
 import requests
 from pathlib import Path
@@ -6,6 +5,7 @@ from lark_oapi.api.drive.v1 import *
 from .wrapper_entity import *
 from .base_wrapper import BaseWrapper
 from .wrapper_error import WrapperError
+from typing import List
 
 
 MAX_FILE_SIZE = 20 * 1024 * 1024
@@ -290,7 +290,7 @@ class CloudSpaceWrapper(BaseWrapper):
         获取云文档所有评论并保存到文件
         https://open.feishu.cn/document/server-docs/docs/CommentAPI/list
         """
-        all_items: list = []
+        all_items: List[FileCommentWrapper] = []
         page_token = None
         page_count = 0
 
@@ -337,70 +337,16 @@ class CloudSpaceWrapper(BaseWrapper):
                     method="list_comments", detail="response.data is null"
                 )
 
-            # 解析评论列表
-            for comment in response.data.items or []:
-                reply_list = None
-                if comment.reply_list:
-                    replies = []
-                    for reply in comment.reply_list.replies or []:
-                        content = None
-                        if reply.content:
-                            elements = []
-                            for elem in reply.content.elements or []:
-                                elements.append(
-                                    ReplyElement(
-                                        type=elem.type,
-                                        text_run=(
-                                            ReplyTextRun(text=elem.text_run.text)
-                                            if elem.text_run
-                                            else None
-                                        ),
-                                        docs_link=(
-                                            ReplyDocsLink(url=elem.docs_link.url)
-                                            if elem.docs_link
-                                            else None
-                                        ),
-                                        person=(
-                                            ReplyPerson(user_id=elem.person.user_id)
-                                            if elem.person
-                                            else None
-                                        ),
-                                    )
-                                )
-                            content = ReplyContent(elements=elements)
-
-                        extra = None
-                        if reply.extra:
-                            extra = ReplyExtra(
-                                image_list=list(reply.extra.image_list or [])
-                            )
-
-                        replies.append(
-                            ReplyItem(
-                                reply_id=reply.reply_id,
-                                user_id=reply.user_id,
-                                create_time=reply.create_time,
-                                update_time=reply.update_time,
-                                content=content,
-                                extra=extra,
-                            )
-                        )
-                    reply_list = ReplyList(replies=replies)
-
-                all_items.append(
-                    CommentItem(
-                        comment_id=comment.comment_id,
-                        user_id=comment.user_id,
-                        create_time=comment.create_time,
-                        update_time=comment.update_time,
-                        is_solved=comment.is_solved,
-                        solved_time=comment.solved_time,
-                        solver_user_id=comment.solver_user_id,
-                        is_whole=comment.is_whole,
-                        quote=comment.quote,
-                        reply_list=reply_list,
-                    )
+            if response.data.items is None:
+                raise WrapperError(
+                    method="list_comments", detail="response.data.items is null"
                 )
+
+            comments = response.data.items or []
+            all_items = [
+                (c if isinstance(c, FileCommentWrapper) else FileCommentWrapper(c))
+                for c in comments
+            ]
 
             print(
                 f"📄 Page {page_count}: {len(response.data.items or [])} comments, total: {len(all_items)}"
